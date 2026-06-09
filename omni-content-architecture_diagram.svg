@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1300 980" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><polygon points="0 0, 10 3, 0 6" fill="#555"/></marker>
+    <marker id="arrow-p" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><polygon points="0 0, 10 3, 0 6" fill="#7B1FA2"/></marker>
+    <marker id="arrow-g" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><polygon points="0 0, 10 3, 0 6" fill="#388E3C"/></marker>
+    <marker id="arrow-r" markerWidth="12" markerHeight="12" refX="11" refY="4" orient="auto"><polygon points="0 0, 12 4, 0 8" fill="#E64A19"/></marker>
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+
+  <rect width="1300" height="980" fill="#FAFAFA"/>
+
+  <!-- Title -->
+  <text x="650" y="42" font-size="30" font-weight="700" text-anchor="middle" fill="#1A1A1A">Omni Content Agent — System Architecture</text>
+  <text x="650" y="70" font-size="14" text-anchor="middle" fill="#666">Multi-Agent Content Generation · Google ADK · Vertex AI Search RAG · Google Search Grounding · Cloud Run</text>
+
+  <!-- User -->
+  <rect x="585" y="100" width="130" height="48" rx="24" fill="#FFFFFF" stroke="#444" stroke-width="2" filter="url(#shadow)"/>
+  <text x="650" y="131" font-size="16" font-weight="600" text-anchor="middle" fill="#222">Founder</text>
+
+  <line x1="650" y1="148" x2="650" y2="188" stroke="#555" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Frontend Layer -->
+  <rect x="120" y="190" width="1060" height="135" rx="14" fill="#E3F2FD" stroke="#1976D2" stroke-width="2" filter="url(#shadow)"/>
+  <text x="650" y="222" font-size="18" font-weight="700" text-anchor="middle" fill="#0D47A1">Next.js Frontend — Cloud Run</text>
+  <text x="650" y="242" font-size="12" text-anchor="middle" fill="#1565C0">user-facing app with streaming SSR &amp; magic-link auth</text>
+
+  <rect x="180" y="258" width="200" height="52" rx="8" fill="#FFFFFF" stroke="#1976D2" stroke-width="1.5"/>
+  <text x="280" y="289" font-size="13" font-weight="500" text-anchor="middle" fill="#0D47A1">6-Step Onboarding</text>
+
+  <rect x="410" y="258" width="200" height="52" rx="8" fill="#FFFFFF" stroke="#1976D2" stroke-width="1.5"/>
+  <text x="510" y="289" font-size="13" font-weight="500" text-anchor="middle" fill="#0D47A1">Generate · Stream · Critic</text>
+
+  <rect x="640" y="258" width="200" height="52" rx="8" fill="#FFFFFF" stroke="#1976D2" stroke-width="1.5"/>
+  <text x="740" y="289" font-size="13" font-weight="500" text-anchor="middle" fill="#0D47A1">Library · Approve · Copy</text>
+
+  <rect x="870" y="258" width="240" height="52" rx="8" fill="#FFFFFF" stroke="#1976D2" stroke-width="1.5"/>
+  <text x="990" y="289" font-size="13" font-weight="500" text-anchor="middle" fill="#0D47A1">Supabase Auth · Magic Link</text>
+
+  <line x1="650" y1="325" x2="650" y2="378" stroke="#555" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="668" y="358" font-size="12" fill="#555">brief + persona_id</text>
+
+  <!-- ADK Backend Layer -->
+  <rect x="80" y="382" width="1140" height="295" rx="14" fill="#F3E5F5" stroke="#7B1FA2" stroke-width="2" filter="url(#shadow)"/>
+  <text x="650" y="414" font-size="18" font-weight="700" text-anchor="middle" fill="#4A148C">ADK Multi-Agent Backend — Cloud Run</text>
+  <text x="650" y="434" font-size="12" text-anchor="middle" fill="#6A1B9A">all four agents powered by Gemini 2.5 Flash via Vertex AI</text>
+
+  <!-- Orchestrator -->
+  <rect x="525" y="452" width="250" height="65" rx="10" fill="#FFFFFF" stroke="#7B1FA2" stroke-width="2.5"/>
+  <text x="650" y="480" font-size="16" font-weight="700" text-anchor="middle" fill="#4A148C">Orchestrator Agent</text>
+  <text x="650" y="500" font-size="11" text-anchor="middle" fill="#666">routes &amp; coordinates the pipeline</text>
+
+  <line x1="585" y1="517" x2="245" y2="562" stroke="#7B1FA2" stroke-width="1.5" marker-end="url(#arrow-p)"/>
+  <line x1="650" y1="517" x2="650" y2="562" stroke="#7B1FA2" stroke-width="1.5" marker-end="url(#arrow-p)"/>
+  <line x1="715" y1="517" x2="1055" y2="562" stroke="#7B1FA2" stroke-width="1.5" marker-end="url(#arrow-p)"/>
+
+  <!-- Brand DNA Agent -->
+  <rect x="120" y="567" width="250" height="95" rx="10" fill="#FFFFFF" stroke="#7B1FA2" stroke-width="1.5"/>
+  <text x="245" y="595" font-size="15" font-weight="600" text-anchor="middle" fill="#4A148C">Brand DNA Agent</text>
+  <text x="245" y="618" font-size="11" text-anchor="middle" fill="#555">retrieves persona-scoped RAG</text>
+  <text x="245" y="636" font-size="11" text-anchor="middle" fill="#555">via Vertex AI Search</text>
+  <text x="245" y="654" font-size="10" font-style="italic" text-anchor="middle" fill="#7B1FA2">private data grounding</text>
+
+  <!-- Research Agent -->
+  <rect x="525" y="567" width="250" height="95" rx="10" fill="#FFFFFF" stroke="#7B1FA2" stroke-width="1.5"/>
+  <text x="650" y="595" font-size="15" font-weight="600" text-anchor="middle" fill="#4A148C">Research Agent</text>
+  <text x="650" y="618" font-size="11" text-anchor="middle" fill="#555">grounds trends in real-time</text>
+  <text x="650" y="636" font-size="11" text-anchor="middle" fill="#555">via ADK Google Search tool</text>
+  <text x="650" y="654" font-size="10" font-style="italic" text-anchor="middle" fill="#7B1FA2">live web grounding</text>
+
+  <!-- Content Agent -->
+  <rect x="930" y="567" width="250" height="95" rx="10" fill="#FFFFFF" stroke="#7B1FA2" stroke-width="1.5"/>
+  <text x="1055" y="595" font-size="15" font-weight="600" text-anchor="middle" fill="#4A148C">Content Agent</text>
+  <text x="1055" y="618" font-size="11" text-anchor="middle" fill="#555">synthesizes &amp; writes output</text>
+  <text x="1055" y="636" font-size="11" text-anchor="middle" fill="#555">critic check before approval</text>
+  <text x="1055" y="654" font-size="10" font-style="italic" text-anchor="middle" fill="#7B1FA2">synthesis &amp; quality</text>
+
+  <!-- Data / External Services layer -->
+  <rect x="80" y="722" width="1140" height="210" rx="14" fill="#E8F5E9" stroke="#388E3C" stroke-width="2" filter="url(#shadow)"/>
+  <text x="650" y="754" font-size="18" font-weight="700" text-anchor="middle" fill="#1B5E20">Data &amp; Grounding Layer</text>
+
+  <rect x="110" y="774" width="200" height="135" rx="10" fill="#FFFFFF" stroke="#388E3C" stroke-width="1.5"/>
+  <text x="210" y="802" font-size="14" font-weight="600" text-anchor="middle" fill="#1B5E20">Vertex AI Search</text>
+  <text x="210" y="824" font-size="10" text-anchor="middle" fill="#555">datastore: omni-content-agent-v2</text>
+  <text x="210" y="842" font-size="10" text-anchor="middle" fill="#555">brand DNA chunks +</text>
+  <text x="210" y="858" font-size="10" text-anchor="middle" fill="#555">approved posts indexed</text>
+  <text x="210" y="876" font-size="10" text-anchor="middle" fill="#555">persona-filtered retrieval</text>
+  <text x="210" y="898" font-size="10" font-weight="600" font-style="italic" text-anchor="middle" fill="#1B5E20">RAG memory</text>
+
+  <rect x="335" y="774" width="200" height="135" rx="10" fill="#FFFFFF" stroke="#388E3C" stroke-width="1.5"/>
+  <text x="435" y="802" font-size="14" font-weight="600" text-anchor="middle" fill="#1B5E20">Google Search</text>
+  <text x="435" y="824" font-size="10" text-anchor="middle" fill="#555">ADK built-in tool</text>
+  <text x="435" y="842" font-size="10" text-anchor="middle" fill="#555">real-time trend discovery</text>
+  <text x="435" y="858" font-size="10" text-anchor="middle" fill="#555">filtered through brand DNA</text>
+  <text x="435" y="898" font-size="10" font-weight="600" font-style="italic" text-anchor="middle" fill="#1B5E20">live grounding</text>
+
+  <rect x="560" y="774" width="200" height="135" rx="10" fill="#FFFFFF" stroke="#388E3C" stroke-width="1.5"/>
+  <text x="660" y="802" font-size="14" font-weight="600" text-anchor="middle" fill="#1B5E20">Gemini 2.5 Flash</text>
+  <text x="660" y="824" font-size="10" text-anchor="middle" fill="#555">via Vertex AI</text>
+  <text x="660" y="842" font-size="10" text-anchor="middle" fill="#555">powers all four agents</text>
+  <text x="660" y="858" font-size="10" text-anchor="middle" fill="#555">streaming responses</text>
+  <text x="660" y="898" font-size="10" font-weight="600" font-style="italic" text-anchor="middle" fill="#1B5E20">multi-agent intelligence</text>
+
+  <rect x="785" y="774" width="200" height="135" rx="10" fill="#FFFFFF" stroke="#388E3C" stroke-width="1.5"/>
+  <text x="885" y="802" font-size="14" font-weight="600" text-anchor="middle" fill="#1B5E20">Cloud Storage</text>
+  <text x="885" y="824" font-size="10" text-anchor="middle" fill="#555">brand_dna.json per persona</text>
+  <text x="885" y="842" font-size="10" text-anchor="middle" fill="#555">approved content as .txt</text>
+  <text x="885" y="858" font-size="10" text-anchor="middle" fill="#555">workspace-scoped paths</text>
+  <text x="885" y="898" font-size="10" font-weight="600" font-style="italic" text-anchor="middle" fill="#1B5E20">file storage</text>
+
+  <rect x="1010" y="774" width="180" height="135" rx="10" fill="#FFFFFF" stroke="#388E3C" stroke-width="1.5"/>
+  <text x="1100" y="802" font-size="14" font-weight="600" text-anchor="middle" fill="#1B5E20">Supabase</text>
+  <text x="1100" y="824" font-size="10" text-anchor="middle" fill="#555">auth + workspaces</text>
+  <text x="1100" y="842" font-size="10" text-anchor="middle" fill="#555">personas</text>
+  <text x="1100" y="858" font-size="10" text-anchor="middle" fill="#555">content_pieces metadata</text>
+  <text x="1100" y="898" font-size="10" font-weight="600" font-style="italic" text-anchor="middle" fill="#1B5E20">application state</text>
+
+  <!-- Connections from sub-agents to data layer -->
+  <line x1="245" y1="662" x2="210" y2="774" stroke="#388E3C" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrow-g)"/>
+  <line x1="650" y1="662" x2="435" y2="774" stroke="#388E3C" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrow-g)"/>
+  <line x1="1055" y1="662" x2="660" y2="774" stroke="#388E3C" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrow-g)"/>
+
+  <!-- Feedback loop highlight box -->
+  <rect x="160" y="945" width="980" height="28" rx="6" fill="#FBE9E7" stroke="#E64A19" stroke-width="1.5"/>
+  <text x="650" y="964" font-size="13" font-weight="600" text-anchor="middle" fill="#BF360C">Feedback loop: every approved piece is re-indexed into Vertex AI Search — the system literally gets smarter with each use</text>
+</svg>
