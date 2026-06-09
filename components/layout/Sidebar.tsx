@@ -12,7 +12,6 @@ import {
   LayoutDashboard,
   ChevronDown,
   LogOut,
-  Settings,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'

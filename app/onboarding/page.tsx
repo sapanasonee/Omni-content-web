@@ -1,11 +1,11 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useOnboarding } from '@/lib/hooks/useOnboarding'
 import { cn } from '@/lib/utils'
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function TagInput({ onAdd }: { onAdd: (tag: string) => void }) {
   const [value, setValue] = useState('')
@@ -30,7 +30,7 @@ function TagInput({ onAdd }: { onAdd: (tag: string) => void }) {
   )
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const STEPS = [
   { number: 1, name: 'Identity' },
@@ -69,14 +69,14 @@ const AVOID_OPTIONS = [
   'Overly promotional language',
 ]
 
-// ─── Main component ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Main component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function OnboardingPage() {
   const router = useRouter()
   const {
     step, data, updateSection,
     canContinue, next, back,
-    progress, totalSteps,
+    totalSteps,
   } = useOnboarding()
 
   const [saving, setSaving] = useState(false)
@@ -114,16 +114,7 @@ export default function OnboardingPage() {
     })
   }
 
-  function toggleAvoid(item: string) {
-    const current = data.avoid
-    updateSection('avoid', (
-      current.includes(item)
-        ? current.filter((a: string) => a !== item)
-        : [...current, item]
-    ) as any)
-  }
-
-  // ─── Saving state ────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Saving state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   if (saving) {
     return (
@@ -136,7 +127,7 @@ export default function OnboardingPage() {
     )
   }
 
-  // ─── Main render ─────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Main render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   return (
     <div className="min-h-screen bg-white py-12 px-4">
@@ -147,7 +138,7 @@ export default function OnboardingPage() {
           <div className="w-8 h-8 bg-[#534AB7] rounded-lg mx-auto mb-3" />
           <h1 className="text-xl font-bold text-gray-900">Set up your brand voice</h1>
           <p className="text-sm text-gray-500">
-            Step {step} of {totalSteps} — {STEPS[step - 1].name}
+            Step {step} of {totalSteps} â€” {STEPS[step - 1].name}
           </p>
         </div>
 
@@ -167,7 +158,7 @@ export default function OnboardingPage() {
         {/* Step card */}
         <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm space-y-5">
 
-          {/* Step 1 — Identity */}
+          {/* Step 1 â€” Identity */}
           {step === 1 && (
             <div className="space-y-4">
               <div>
@@ -190,7 +181,7 @@ export default function OnboardingPage() {
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#534AB7]/30 focus:border-[#534AB7]"
                 />
                 <p className="text-xs text-gray-400 mt-1">
-                  Not your job title — what you actually do and where you are in your journey
+                  Not your job title â€” what you actually do and where you are in your journey
                 </p>
               </div>
               <div>
@@ -206,7 +197,7 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* Step 2 — Audience */}
+          {/* Step 2 â€” Audience */}
           {step === 2 && (
             <div className="space-y-4">
               <div>
@@ -225,8 +216,6 @@ export default function OnboardingPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Audience segments
                 </label>
-
-                {/* Selected tags */}
                 {data.audience.segments.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-3">
                     {data.audience.segments.map(seg => (
@@ -240,17 +229,13 @@ export default function OnboardingPage() {
                           onClick={() => removeSegment(seg)}
                           className="hover:opacity-70 ml-0.5"
                         >
-                          ×
+                          Ã—
                         </button>
                       </span>
                     ))}
                   </div>
                 )}
-
-                {/* Free text input */}
                 <TagInput onAdd={addSegment} />
-
-                {/* Suggestions */}
                 <p className="text-xs text-gray-400 mt-2 mb-1.5">Suggestions:</p>
                 <div className="flex flex-wrap gap-2">
                   {AUDIENCE_SUGGESTIONS
@@ -270,7 +255,7 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* Step 3 — Voice */}
+          {/* Step 3 â€” Voice */}
           {step === 3 && (
             <div className="space-y-4">
               <div>
@@ -283,16 +268,15 @@ export default function OnboardingPage() {
                 <textarea
                   value={data.voice.description}
                   onChange={e => updateSection('voice', { description: e.target.value })}
-                  placeholder="e.g. Direct and warm. I open with a specific moment, not a broad statement. I never lecture — I share what I learned and invite the reader to think."
+                  placeholder="e.g. Direct and warm. I open with a specific moment, not a broad statement. I never lecture â€” I share what I learned and invite the reader to think."
                   rows={4}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#534AB7]/30 focus:border-[#534AB7] resize-none"
                 />
-                {/* Inspiration examples */}
                 {data.voice.description === '' && (
                   <div className="mt-2 space-y-1.5">
                     <p className="text-xs text-gray-400">Need inspiration? Click one to start:</p>
                     {[
-                      "Direct and warm. I open with a specific moment, not a broad statement. I never lecture — I share what I learned and invite the reader to think.",
+                      "Direct and warm. I open with a specific moment, not a broad statement. I never lecture â€” I share what I learned and invite the reader to think.",
                       "Concise and precise. I cut every word that doesn't earn its place. I write for builders who don't have time for fluff.",
                       "Conversational and honest. I write like I'm talking to one person over coffee. I share the uncomfortable truth, not the comfortable version.",
                     ].map((example, i) => (
@@ -363,7 +347,8 @@ export default function OnboardingPage() {
               </div>
             </div>
           )}
-          {/* Step 4 — Examples */}
+
+          {/* Step 4 â€” Examples */}
           {step === 4 && (
             <div className="space-y-4">
               <div>
@@ -389,7 +374,7 @@ export default function OnboardingPage() {
                 <textarea
                   value={data.examples.bad}
                   onChange={e => updateSection('examples', { bad: e.target.value })}
-                  placeholder="Paste an example of writing that makes you cringe — or describe what it sounds like..."
+                  placeholder="Paste an example of writing that makes you cringe â€” or describe what it sounds like..."
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#534AB7]/30 focus:border-[#534AB7] resize-none"
                 />
@@ -397,8 +382,7 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* Step 5 — Avoid */}
-{/* Step 5 — Avoid */}
+          {/* Step 5 â€” Avoid */}
           {step === 5 && (
             <div className="space-y-4">
               <div>
@@ -406,18 +390,18 @@ export default function OnboardingPage() {
                   What should your content never sound like?
                 </label>
                 <p className="text-xs text-gray-400 mb-2">
-                  Describe the type of writer or tone that makes you cringe. Be specific — "sounds like a LinkedIn ghostwriter" is more useful than "unprofessional."
+                  Describe the type of writer or tone that makes you cringe. Be specific - sounds like a LinkedIn ghostwriter is more useful than unprofessional.
                 </p>
                 <textarea
                   value={data.avoid.join('\n')}
-                  onChange={e => updateSection('avoid', e.target.value.split('\n').filter((a: string) => a.trim() !== '') as any)}
-                  placeholder="e.g. Sounds like a LinkedIn ghostwriter template. Uses hollow phrases like 'game-changer' or 'synergy'. Opens with a rhetorical question. Ends with 5 hashtags."
+                  onChange={e => updateSection('avoid', e.target.value.split('\n').filter((a: string) => a.trim() !== ''))}
+                  placeholder="e.g. Sounds like a LinkedIn ghostwriter template. Uses hollow phrases like game-changer or synergy. Opens with a rhetorical question. Ends with 5 hashtags."
                   rows={4}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#534AB7]/30 focus:border-[#534AB7] resize-none"
                 />
               </div>
               <div>
-                <p className="text-xs text-gray-400 mb-2">Common avoids — click to add:</p>
+                <p className="text-xs text-gray-400 mb-2">Common avoids â€” click to add:</p>
                 <div className="flex flex-wrap gap-2">
                   {AVOID_OPTIONS
                     .filter((item: string) => !data.avoid.includes(item))
@@ -425,7 +409,7 @@ export default function OnboardingPage() {
                       <button
                         key={item}
                         type="button"
-                        onClick={() => updateSection('avoid', [...data.avoid, item] as any)}
+                        onClick={() => updateSection('avoid', [...data.avoid, item])}
                         className="px-3 py-1.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all"
                       >
                         + {item}
@@ -436,7 +420,7 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* Step 6 — Formats */}
+          {/* Step 6 â€” Formats */}
           {step === 6 && (
             <div className="space-y-4">
               <div>
@@ -537,3 +521,6 @@ export default function OnboardingPage() {
     </div>
   )
 }
+
+
+

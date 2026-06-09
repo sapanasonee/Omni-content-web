@@ -3,11 +3,10 @@ import { Storage } from '@google-cloud/storage'
 import { NextResponse } from 'next/server'
 import type { OnboardingData, BrandDNA } from '@/lib/types'
 
-const storage = new Storage({
-  projectId: process.env.GCP_PROJECT_ID,
-})
-
-const bucket = storage.bucket(process.env.GCS_BUCKET_NAME!)
+function getBucket() {
+  const storage = new Storage({ projectId: process.env.GCP_PROJECT_ID })
+  return storage.bucket(process.env.GCS_BUCKET_NAME!)
+}
 
 export async function POST(request: Request) {
   try {
@@ -57,7 +56,6 @@ export async function POST(request: Request) {
 
     if (personaError) {
       console.error('Persona creation error:', personaError)
-      // Rollback workspace
       await supabase.from('workspaces').delete().eq('id', workspace.id)
       return NextResponse.json({ error: 'Failed to create persona' }, { status: 500 })
     }
@@ -73,6 +71,7 @@ export async function POST(request: Request) {
 
     // 7. Save to GCS
     const gcsPath = `workspaces/${workspace.id}/personas/${persona.id}/brand_dna.json`
+    const bucket = getBucket()
     const file = bucket.file(gcsPath)
     await file.save(JSON.stringify(brandDNA, null, 2), {
       contentType: 'application/json',
@@ -91,9 +90,6 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error('Onboarding error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

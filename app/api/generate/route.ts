@@ -1,20 +1,8 @@
-import { createClient } from '@/lib/supabase/server'
+ import { createClient } from '@/lib/supabase/server'
 import { Storage } from '@google-cloud/storage'
-import { VertexAI } from '@google-cloud/vertexai'
+import { VertexAI, type GenerateContentRequest } from '@google-cloud/vertexai'
 import { NextResponse } from 'next/server'
 import type { BrandDNA, ContentFormat } from '@/lib/types'
-
-const storage = new Storage({ projectId: process.env.GCP_PROJECT_ID })
-const bucket = storage.bucket(process.env.GCS_BUCKET_NAME!)
-
-const vertexAI = new VertexAI({
-  project: process.env.GCP_PROJECT_ID!,
-  location: 'us-central1',
-})
-
-const model = vertexAI.getGenerativeModel({
-  model: 'gemini-2.5-flash',
-})
 
 const FORMAT_INSTRUCTIONS: Record<ContentFormat, string> = {
   linkedin: 'LinkedIn post. Max 1300 characters. Short paragraphs. Max 4 hashtags at the end only. Start with a hook. End with insight or question.',
@@ -35,6 +23,19 @@ UNIVERSAL QUALITY GUARDRAILS — apply to every generation without exception:
 - Never add meta-commentary — output only the content itself
 - No preamble. Start directly with the content.
 `
+
+function getBucket() {
+  const storage = new Storage({ projectId: process.env.GCP_PROJECT_ID })
+  return storage.bucket(process.env.GCS_BUCKET_NAME!)
+}
+
+function getModel() {
+  const vertexAI = new VertexAI({
+    project: process.env.GCP_PROJECT_ID!,
+    location: 'us-central1',
+  })
+  return vertexAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+}
 
 export async function POST(request: Request) {
   try {
@@ -78,6 +79,7 @@ export async function POST(request: Request) {
     let brandDNA: BrandDNA | null = null
 
     try {
+      const bucket = getBucket()
       const file = bucket.file(gcsPath)
       const [content] = await file.download()
       brandDNA = JSON.parse(content.toString())
@@ -135,17 +137,19 @@ Output only the final content — no preamble, no labels, just the content itsel
     }
 
     // 7. Generate with Vertex AI streaming
-    const request_body = {
+    const requestBody: GenerateContentRequest = {
       systemInstruction: {
-        parts: [{ text: systemPrompt }]
+        role: 'system',
+        parts: [{ text: systemPrompt }],
       },
       contents: [{
-        role: 'user' as const,
-        parts: [{ text: userPrompt }]
-      }]
+        role: 'user',
+        parts: [{ text: userPrompt }],
+      }],
     }
 
-    const streamingResult = await model.generateContentStream(request_body)
+    const model = getModel()
+    const streamingResult = await model.generateContentStream(requestBody)
 
     // 8. Increment usage counter (fire and forget)
     supabase
@@ -154,7 +158,7 @@ Output only the final content — no preamble, no labels, just the content itsel
       .eq('id', workspace_id)
       .then(() => {})
 
-    // 9. Stream response and save draft
+    // 9. Stream response, save draft, return content_piece_id via meta chunk
     const fullText: string[] = []
     const encoder = new TextEncoder()
 
@@ -172,17 +176,27 @@ Output only the final content — no preamble, no labels, just the content itsel
           // Save draft after streaming completes
           const body = fullText.join('')
           if (body) {
-            await supabase.from('content_pieces').insert({
-              workspace_id,
-              persona_id,
-              format,
-              body,
-              status: 'draft',
-              topic: topic || description || 'Untitled',
-              mode: mode,
-              generation_mode: generation_mode || 'standard',
-              rag_excluded: generation_mode === 'one_time',
-            })
+            const { data: savedPiece } = await supabase
+              .from('content_pieces')
+              .insert({
+                workspace_id,
+                persona_id,
+                format,
+                body,
+                status: 'draft',
+                topic: topic || description || 'Untitled',
+                mode,
+                generation_mode: generation_mode || 'standard',
+                rag_excluded: generation_mode === 'one_time',
+              })
+              .select('id')
+              .single()
+
+            // Send meta chunk with content_piece_id so client can wire Approve
+            if (savedPiece?.id) {
+              const metaChunk = `\n__META__${JSON.stringify({ content_piece_id: savedPiece.id })}`
+              controller.enqueue(encoder.encode(metaChunk))
+            }
           }
         } catch (err) {
           console.error('Streaming error:', err)
