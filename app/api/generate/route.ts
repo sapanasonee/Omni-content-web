@@ -57,24 +57,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // 3. Check usage limit
-    const { data: workspace } = await supabase
+    // 3. Verify workspace ownership + persona-belongs-to-workspace in ONE query
+    const { data: workspace, error: workspaceError } = await supabase
       .from('workspaces')
-      .select('*')
+      .select('*, personas!inner(id)')
       .eq('id', workspace_id)
+      .eq('personas.id', persona_id)
       .single()
 
-    if (!workspace) {
-      return NextResponse.json({ error: 'Workspace not found' }, { status: 404 })
+    if (workspaceError || !workspace) {
+      return NextResponse.json({ error: 'Workspace or persona not found' }, { status: 404 })
     }
 
+    // 4. Pre-check limit (RPC enforces strictly under concurrency)
     if (workspace.plan_tier === 'solo' && workspace.generations_used >= 30) {
       return NextResponse.json({
         error: 'Monthly generation limit reached. Upgrade to Studio for more.'
       }, { status: 402 })
     }
 
-    // 4. Load brand DNA from GCS
+    // 5. Load brand DNA from GCS
     const gcsPath = `workspaces/${workspace_id}/personas/${persona_id}/brand_dna.json`
     let brandDNA: BrandDNA | null = null
 
@@ -88,7 +90,6 @@ export async function POST(request: Request) {
         error: 'Brand DNA not found. Please complete onboarding first.'
       }, { status: 404 })
     }
-
     // 5. Build system prompt
     const dna = brandDNA!.sections
     const systemPrompt = `You are a content writer for ${dna.identity.full_name}.
@@ -151,14 +152,15 @@ Output only the final content — no preamble, no labels, just the content itsel
     const model = getModel()
     const streamingResult = await model.generateContentStream(requestBody)
 
-    // 8. Increment usage counter (fire and forget)
-    supabase
-      .from('workspaces')
-      .update({ generations_used: workspace.generations_used + 1 })
-      .eq('id', workspace_id)
-      .then(() => {})
-
-    // 9. Stream response, save draft, return content_piece_id via meta chunk
+  // 8. Atomically increment generation count (RPC enforces limit under concurrency)
+supabase
+  .rpc('increment_generation_count', { p_workspace_id: workspace_id })
+  .then(({ data }) => {
+    if (data && !data.success && data.reason === 'limit_reached') {
+      console.warn(`Limit race detected for workspace ${workspace_id}`)
+    }
+  })
+  // 9. Stream response, save draft, return content_piece_id via meta chunk
     const fullText: string[] = []
     const encoder = new TextEncoder()
 

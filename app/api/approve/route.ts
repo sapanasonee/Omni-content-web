@@ -63,6 +63,7 @@ export async function POST(request: Request) {
       .from('personas')
       .select('*')
       .eq('id', persona_id)
+      .eq('workspace_id', workspace_id)
       .single()
 
     if (personaError || !persona) {
