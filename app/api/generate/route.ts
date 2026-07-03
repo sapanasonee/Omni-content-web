@@ -57,18 +57,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // 3. Verify workspace ownership + persona-belongs-to-workspace in ONE query
+    // 3. Verify workspace ownership, then persona-belongs-to-workspace.
+    //    Two simple queries instead of one embedded join — avoids PostgREST
+    //    relationship ambiguity (workspaces<->personas now has multiple FK paths
+    //    via trending_cache). RLS still enforces ownership on both.
     const { data: workspace, error: workspaceError } = await supabase
       .from('workspaces')
-      .select('*, personas!inner(id)')
+      .select('*')
       .eq('id', workspace_id)
-      .eq('personas.id', persona_id)
       .single()
 
     if (workspaceError || !workspace) {
-      return NextResponse.json({ error: 'Workspace or persona not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Workspace not found' }, { status: 404 })
     }
 
+    const { data: persona, error: personaError } = await supabase
+      .from('personas')
+      .select('id')
+      .eq('id', persona_id)
+      .eq('workspace_id', workspace_id)
+      .single()
+
+    if (personaError || !persona) {
+      return NextResponse.json({ error: 'Persona not found in this workspace' }, { status: 404 })
+    }
     // 4. Pre-check limit (RPC enforces strictly under concurrency)
     if (workspace.plan_tier === 'solo' && workspace.generations_used >= 30) {
       return NextResponse.json({
@@ -185,6 +197,7 @@ supabase
                 persona_id,
                 format,
                 body,
+                original_body: body,   // preserve as-generated text; never updated after this
                 status: 'draft',
                 topic: topic || description || 'Untitled',
                 mode,

@@ -36,6 +36,8 @@ export default function GeneratePage() {
   const [contentPieceId, setContentPieceId] = useState<string | null>(null)
   const [approving, setApproving] = useState(false)
   const [approved, setApproved] = useState(false)
+  const [isDirty, setIsDirty] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [activeRagCount, setActiveRagCount] = useState<number | null>(null)
   const [violations, setViolations] = useState<string[]>([])
   const [showViolationsModal, setShowViolationsModal] = useState(false)
@@ -78,27 +80,32 @@ export default function GeneratePage() {
         throw new Error(err.error || 'Generation failed')
       }
 
-      // Stream the response
+      // Stream the response — accumulate raw text so the __META__ marker
+      // is detected even when it's split across read() boundaries.
       const reader = res.body!.getReader()
       const decoder = new TextDecoder()
+      let raw = ''
 
       while (true) {
-         const { done, value } = await reader.read()
-         if (done) break
-          const chunk = decoder.decode(value, { stream: true })
-         if (chunk.includes('__META__')) {
-       const parts = chunk.split('__META__')
-         if (parts[0]) setOutput(prev => prev + parts[0])
-        try {
-         const metaData = JSON.parse(parts[1])
-         if (metaData?.content_piece_id) {
-        setContentPieceId(metaData.content_piece_id)
+        const { done, value } = await reader.read()
+        if (done) break
+        raw += decoder.decode(value, { stream: true })
+        const metaIdx = raw.indexOf('__META__')
+        // Show only the body; never render the meta marker
+        setOutput(metaIdx === -1 ? raw : raw.slice(0, metaIdx))
       }
-    } catch {}
-  } else {
-    setOutput(prev => prev + chunk)
-  }
-}
+
+      // Parse meta once, from the complete accumulated string
+      const metaIdx = raw.indexOf('__META__')
+      if (metaIdx !== -1) {
+        setOutput(raw.slice(0, metaIdx))
+        try {
+          const metaData = JSON.parse(raw.slice(metaIdx + '__META__'.length))
+          if (metaData?.content_piece_id) {
+            setContentPieceId(metaData.content_piece_id)
+          }
+        } catch {}
+      }
 
       // After streaming, fetch the latest draft ID
       const latestRes = await fetch(`/api/content?workspace_id=${meta.workspace_id}&persona_id=${meta.persona_id}&status=draft&limit=1`)
@@ -115,12 +122,39 @@ export default function GeneratePage() {
       setLoading(false)
     }
   }
-
+  async function saveEdit(): Promise<boolean> {
+    if (!contentPieceId || !isDirty) return true
+    setSaving(true)
+    try {
+      const meta = await (await fetch('/api/me')).json()
+      const res = await fetch('/api/draft', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content_piece_id: contentPieceId,
+          workspace_id: meta.workspace_id,
+          body: output,
+        }),
+      })
+      if (!res.ok) {
+        setApproveError('Could not save your edit. Try again before approving.')
+        return false
+      }
+      setIsDirty(false)
+      return true
+    } catch {
+      setApproveError('Could not save your edit. Try again before approving.')
+      return false
+    } finally {
+      setSaving(false)
+    }
+  }
   async function handleApprove(confirmed = false) {
     if (!contentPieceId) return
+    const saved = await saveEdit()      // flush any pending edit before approving
+    if (!saved) return                  // save failed — do not approve stale text
     setApproving(true)
     setApproveError(null)
-
     try {
       const metaRes = await fetch('/api/me')
       const meta = await metaRes.json()
@@ -373,12 +407,25 @@ async function handleCopy() {
 
           {(output || loading) && (
             <div className="max-w-2xl">
-              <div className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
-                {output}
-                {loading && (
+              {loading ? (
+                <div className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
+                  {output}
                   <span className="inline-block w-1 h-4 bg-[#534AB7] animate-pulse ml-0.5 align-middle" />
-                )}
-              </div>
+                </div>
+              ) : (
+                <textarea
+                  value={output}
+                  onChange={e => { setOutput(e.target.value); setIsDirty(true); setApproved(false) }}
+                  onBlur={saveEdit}
+                  disabled={approved}
+                  className="w-full min-h-[50vh] text-sm text-gray-800 whitespace-pre-wrap leading-relaxed resize-none focus:outline-none bg-transparent disabled:opacity-100"
+                />
+              )}
+              {!approved && (
+                <p className="mt-2 text-xs text-gray-400">
+                  {saving ? 'Saving…' : isDirty ? 'You have unsaved changes' : 'All changes saved'}
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -392,6 +439,13 @@ async function handleCopy() {
 >
   {copied ? '✓ Copied!' : 'Copy'}
 </button>
+<button
+              onClick={saveEdit}
+              disabled={!isDirty || saving || approved}
+              className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {saving ? 'Saving…' : 'Save edit'}
+            </button>
 <button
               onClick={() => {
                 setInput('')
