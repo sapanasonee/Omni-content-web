@@ -50,7 +50,8 @@ export async function POST(request: Request) {
     const {
       workspace_id, persona_id, format, mode,
       topic, raw_input, description,
-      tone_override, generation_mode
+      tone_override, generation_mode,
+      campaign_context_id, one_time_context
     } = await request.json()
 
     if (!workspace_id || !persona_id || !format) {
@@ -102,6 +103,43 @@ export async function POST(request: Request) {
         error: 'Brand DNA not found. Please complete onboarding first.'
       }, { status: 404 })
     }
+    // ── A3.1: Context resolution ─────────────────────────────
+    // Precedence: one_time > campaign > permanent defaults.
+    // Hard rules are never overridden (conflict confirmation = A3.4).
+    const { data: permanentContexts } = await supabase
+      .from('contexts')
+      .select('id, tier, content')
+      .eq('persona_id', persona_id)
+      .eq('scope', 'permanent')
+      .eq('status', 'active')
+
+    const hardRules = (permanentContexts || []).filter(c => c.tier === 'hard_rule')
+    const defaults = (permanentContexts || []).filter(c => c.tier !== 'hard_rule')
+
+    let campaignContext: { id: string; name: string | null; content: string } | null = null
+    if (campaign_context_id) {
+      const { data: cc } = await supabase
+        .from('contexts')
+        .select('id, name, content')
+        .eq('id', campaign_context_id)
+        .eq('workspace_id', workspace_id)
+        .eq('scope', 'campaign')
+        .eq('status', 'active')
+        .single()
+      campaignContext = cc
+    }
+
+    const contextSections = [
+      hardRules.length > 0 &&
+        `STANDING RULES — NON-NEGOTIABLE. These can never be overridden by anything below:\n${hardRules.map(r => `- ${r.content}`).join('\n')}`,
+      defaults.length > 0 &&
+        `STANDING PREFERENCES. Follow these unless campaign or one-time guidance below overrides them:\n${defaults.map(d => `- ${d.content}`).join('\n')}`,
+      campaignContext &&
+        `ACTIVE CAMPAIGN${campaignContext.name ? ` "${campaignContext.name}"` : ''}. This piece is part of it:\n${campaignContext.content}`,
+      one_time_context &&
+        `FOR THIS PIECE ONLY — the following overrides any standing preferences and campaign guidance above (but never the non-negotiable rules):\n${one_time_context}`,
+    ].filter(Boolean).join('\n\n')
+
     // 5. Build system prompt
     const dna = brandDNA!.sections
     const systemPrompt = `You are a content writer for ${dna.identity.full_name}.
@@ -128,7 +166,7 @@ ${dna.examples.bad ? `AVOID THIS STYLE:\n${dna.examples.bad}` : ''}
 AVOID RULES (hard stops):
 ${dna.avoid.join('\n')}
 
-${UNIVERSAL_GUARDRAILS}
+${contextSections ? contextSections + '\n\n' : ''}${UNIVERSAL_GUARDRAILS}
 
 FORMAT: ${FORMAT_INSTRUCTIONS[format as ContentFormat]}
 
@@ -188,21 +226,30 @@ supabase
           }
 
           // Save draft after streaming completes
-          const body = fullText.join('')
+           const body = fullText.join('')
           if (body) {
-            const { data: savedPiece } = await supabase
+          const { data: savedPiece } = await supabase
               .from('content_pieces')
               .insert({
                 workspace_id,
                 persona_id,
                 format,
                 body,
-                original_body: body,   // preserve as-generated text; never updated after this
+                original_body: body,
                 status: 'draft',
                 topic: topic || description || 'Untitled',
                 mode,
                 generation_mode: generation_mode || 'standard',
                 rag_excluded: generation_mode === 'one_time',
+                campaign_context_id: campaign_context_id || null,
+                one_time_context: one_time_context || null,
+                resolved_context: {
+                  hard_rules: hardRules.map(r => ({ id: r.id, content: r.content })),
+                  defaults: defaults.map(d => ({ id: d.id, content: d.content })),
+                  campaign: campaignContext,
+                  one_time: one_time_context || null,
+                  tone_override: tone_override || null,
+                },
               })
               .select('id')
               .single()
