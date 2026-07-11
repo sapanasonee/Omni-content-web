@@ -1,10 +1,17 @@
 'use client'
 
-import { useState } from 'react'
-import { cn } from '@/lib/utils'
+import { useState, useEffect } from 'react'
+import { cn } from '@/lib/utils' 
+
 type Format = 'linkedin' | 'twitter' | 'newsletter' | 'blog' | 'exec_brief'
 type Mode = 'brief' | 'raw' | 'describe'
-type GenerationMode = 'standard' | 'one_time'
+
+interface Campaign {
+  id: string
+  name: string
+  content: string
+  status: string
+}
 
 const FORMATS: { value: Format; label: string }[] = [
   { value: 'linkedin', label: 'LinkedIn' },
@@ -23,14 +30,22 @@ const MODES: { value: Mode; label: string; placeholder: string }[] = [
 export default function GeneratePage() {
   const [format, setFormat] = useState<Format>('linkedin')
   const [mode, setMode] = useState<Mode>('brief')
-  const [generationMode, setGenerationMode] = useState<GenerationMode>('standard')
   const [input, setInput] = useState('')
-  const [toneOverride, setToneOverride] = useState('')
   const [output, setOutput] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [showAdvanced, setShowAdvanced] = useState(false)
-  const [copied, setCopied] = useState(false) 
+  const [copied, setCopied] = useState(false)
+
+  // Context state
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [selectedCampaignId, setSelectedCampaignId] = useState('')
+  const [oneTimeContext, setOneTimeContext] = useState('')
+  const [showNewCampaign, setShowNewCampaign] = useState(false)
+  const [newCampaignName, setNewCampaignName] = useState('')
+  const [newCampaignContent, setNewCampaignContent] = useState('')
+  const [savingCampaign, setSavingCampaign] = useState(false)
+  const [hardRules, setHardRules] = useState<{ id: string; content: string }[]>([])
+  const [showHardRules, setShowHardRules] = useState(false)
 
   // Approve state
   const [contentPieceId, setContentPieceId] = useState<string | null>(null)
@@ -44,6 +59,66 @@ export default function GeneratePage() {
   const [approveError, setApproveError] = useState<string | null>(null)
 
   const currentMode = MODES.find(m => m.value === mode)!
+  const selectedCampaign = campaigns.find(c => c.id === selectedCampaignId) || null
+
+  // ─── Load active campaigns ────────────────────────────────────
+
+  useEffect(() => {
+  async function loadContexts() {
+    try {
+      const meta = await (await fetch('/api/me')).json()
+      const [campRes, rulesRes] = await Promise.all([
+        fetch(`/api/contexts?workspace_id=${meta.workspace_id}&persona_id=${meta.persona_id}&scope=campaign&status=active`),
+        fetch(`/api/contexts?workspace_id=${meta.workspace_id}&persona_id=${meta.persona_id}&scope=permanent&status=active`),
+      ])
+      if (campRes.ok) {
+        const data = await campRes.json()
+        setCampaigns(data.contexts || [])
+      }
+      if (rulesRes.ok) {
+        const data = await rulesRes.json()
+        setHardRules((data.contexts || []).filter((c: { tier: string }) => c.tier === 'hard_rule'))
+      }
+    } catch (err) {
+      console.error('Failed to load contexts:', err)
+    }
+  }
+  loadContexts()
+}, [])
+  // ─── Create campaign ──────────────────────────────────────────
+
+  async function createCampaign() {
+    if (!newCampaignName.trim() || !newCampaignContent.trim() || savingCampaign) return
+    setSavingCampaign(true)
+    try {
+      const meta = await (await fetch('/api/me')).json()
+      const res = await fetch('/api/contexts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workspace_id: meta.workspace_id,
+          persona_id: meta.persona_id,
+          scope: 'campaign',
+          name: newCampaignName.trim(),
+          content: newCampaignContent.trim(),
+        }),
+      })
+      if (res.ok) {
+        const { context } = await res.json()
+        setCampaigns(prev => [...prev, context])
+        setSelectedCampaignId(context.id)
+        setNewCampaignName('')
+        setNewCampaignContent('')
+        setShowNewCampaign(false)
+      }
+    } catch (err) {
+      console.error('Failed to create campaign:', err)
+    } finally {
+      setSavingCampaign(false)
+    }
+  }
+
+  // ─── Generate ─────────────────────────────────────────────────
 
   async function handleGenerate() {
     if (!input.trim()) return
@@ -67,11 +142,12 @@ export default function GeneratePage() {
           persona_id: meta.persona_id,
           format,
           mode,
-          generation_mode: generationMode,
+          generation_mode: 'standard',
           topic: mode === 'brief' ? input : undefined,
           raw_input: mode === 'raw' ? input : undefined,
           description: mode === 'describe' ? input : undefined,
-          tone_override: toneOverride || undefined,
+          campaign_context_id: selectedCampaignId || undefined,
+          one_time_context: oneTimeContext.trim() || undefined,
         }),
       })
 
@@ -80,8 +156,6 @@ export default function GeneratePage() {
         throw new Error(err.error || 'Generation failed')
       }
 
-      // Stream the response — accumulate raw text so the __META__ marker
-      // is detected even when it's split across read() boundaries.
       const reader = res.body!.getReader()
       const decoder = new TextDecoder()
       let raw = ''
@@ -91,11 +165,9 @@ export default function GeneratePage() {
         if (done) break
         raw += decoder.decode(value, { stream: true })
         const metaIdx = raw.indexOf('__META__')
-        // Show only the body; never render the meta marker
         setOutput(metaIdx === -1 ? raw : raw.slice(0, metaIdx))
       }
 
-      // Parse meta once, from the complete accumulated string
       const metaIdx = raw.indexOf('__META__')
       if (metaIdx !== -1) {
         setOutput(raw.slice(0, metaIdx))
@@ -107,7 +179,6 @@ export default function GeneratePage() {
         } catch {}
       }
 
-      // After streaming, fetch the latest draft ID
       const latestRes = await fetch(`/api/content?workspace_id=${meta.workspace_id}&persona_id=${meta.persona_id}&status=draft&limit=1`)
       if (latestRes.ok) {
         const latest = await latestRes.json()
@@ -122,6 +193,9 @@ export default function GeneratePage() {
       setLoading(false)
     }
   }
+
+  // ─── Save edit ────────────────────────────────────────────────
+
   async function saveEdit(): Promise<boolean> {
     if (!contentPieceId || !isDirty) return true
     setSaving(true)
@@ -149,10 +223,13 @@ export default function GeneratePage() {
       setSaving(false)
     }
   }
+
+  // ─── Approve ──────────────────────────────────────────────────
+
   async function handleApprove(confirmed = false) {
     if (!contentPieceId) return
-    const saved = await saveEdit()      // flush any pending edit before approving
-    if (!saved) return                  // save failed — do not approve stale text
+    const saved = await saveEdit()
+    if (!saved) return
     setApproving(true)
     setApproveError(null)
     try {
@@ -176,14 +253,12 @@ export default function GeneratePage() {
         throw new Error(data.error || 'Approval failed')
       }
 
-      // Violations found — show modal for confirmation
       if (data.requires_confirmation) {
         setViolations(data.violations)
         setShowViolationsModal(true)
         return
       }
 
-      // Success
       setApproved(true)
       setActiveRagCount(data.active_rag_count)
       setShowViolationsModal(false)
@@ -194,23 +269,41 @@ export default function GeneratePage() {
       setApproving(false)
     }
   }
-async function handleCopy() {
-  try {
-    await navigator.clipboard.writeText(output)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  } catch {
-    // fallback for clipboard permission issues
-    const el = document.createElement('textarea')
-    el.value = output
-    document.body.appendChild(el)
-    el.select()
-    document.execCommand('copy')
-    document.body.removeChild(el)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+
+  // ─── Copy ─────────────────────────────────────────────────────
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(output)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      const el = document.createElement('textarea')
+      el.value = output
+      document.body.appendChild(el)
+      el.select()
+      document.execCommand('copy')
+      document.body.removeChild(el)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
   }
-}
+
+  // ─── Reset ────────────────────────────────────────────────────
+
+  function handleNewPiece() {
+    setInput('')
+    setOutput('')
+    setApproved(false)
+    setContentPieceId(null)
+    setActiveRagCount(null)
+    setApproveError(null)
+    setOneTimeContext('')
+    setIsDirty(false)
+  }
+
+  // ─── Render ───────────────────────────────────────────────────
+
   return (
     <div className="flex h-full">
 
@@ -292,36 +385,6 @@ async function handleCopy() {
           </div>
         </div>
 
-        {/* Generation mode */}
-        <div className="px-4 py-3 border-b border-gray-100">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setGenerationMode('standard')}
-              className={cn(
-                'flex-1 py-2 rounded-lg text-xs font-medium transition-all border',
-                generationMode === 'standard'
-                  ? 'bg-[#EEEDFE] border-[#534AB7] text-[#534AB7]'
-                  : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
-              )}
-            >
-              Standard
-              <span className="block text-xs font-normal opacity-60">Learns from history</span>
-            </button>
-            <button
-              onClick={() => setGenerationMode('one_time')}
-              className={cn(
-                'flex-1 py-2 rounded-lg text-xs font-medium transition-all border',
-                generationMode === 'one_time'
-                  ? 'bg-[#EEEDFE] border-[#534AB7] text-[#534AB7]'
-                  : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
-              )}
-            >
-              Fresh start
-              <span className="block text-xs font-normal opacity-60">Ignores history</span>
-            </button>
-          </div>
-        </div>
-
         {/* Input */}
         <div className="flex-1 p-4">
           <textarea
@@ -332,28 +395,114 @@ async function handleCopy() {
           />
         </div>
 
-        {/* Advanced options */}
-        <div className="px-4 pb-2">
-          <button
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            {showAdvanced ? '− Hide' : '+ Advanced options'}
-          </button>
-          {showAdvanced && (
-            <div className="mt-2">
-              <label className="block text-xs text-gray-500 mb-1">Tone override</label>
-              <input
-                type="text"
-                value={toneOverride}
-                onChange={e => setToneOverride(e.target.value)}
-                placeholder="e.g. More vulnerable, less polished"
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-[#534AB7]/30 focus:border-[#534AB7]"
-              />
-            </div>
-          )}
-        </div>
+        {/* Context section */}
+        <div className="px-4 pb-3 space-y-3 border-t border-gray-100 pt-3">
 
+          {/* Campaign picker */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-xs font-medium text-gray-500">Campaign</p>
+              {!showNewCampaign && (
+                <button
+                  onClick={() => setShowNewCampaign(true)}
+                  className="flex items-center gap-0.5 text-xs text-[#534AB7] hover:opacity-80 transition-opacity"
+                >
+                  +New
+                </button>
+              )}
+            </div>
+
+            {showNewCampaign ? (
+              <div className="space-y-2 p-3 border border-[#534AB7]/20 rounded-lg bg-[#FAFAFF]">
+                <input
+                  type="text"
+                  value={newCampaignName}
+                  onChange={e => setNewCampaignName(e.target.value)}
+                  placeholder="Campaign name (e.g. Launch Week)"
+                  className="w-full px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-[#534AB7]/30 focus:border-[#534AB7]"
+                  autoFocus
+                />
+                <textarea
+                  value={newCampaignContent}
+                  onChange={e => setNewCampaignContent(e.target.value)}
+                  placeholder="What should every piece in this campaign know?"
+                  rows={2}
+                  className="w-full px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs resize-none focus:outline-none focus:ring-2 focus:ring-[#534AB7]/30 focus:border-[#534AB7]"
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => { setShowNewCampaign(false); setNewCampaignName(''); setNewCampaignContent('') }}
+                    className="px-2.5 py-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={createCampaign}
+                    disabled={!newCampaignName.trim() || !newCampaignContent.trim() || savingCampaign}
+                    className="px-2.5 py-1 bg-[#534AB7] text-white rounded-lg text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
+                  >
+                    {savingCampaign ? 'Creating…' : 'Create'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <select
+                  value={selectedCampaignId}
+                  onChange={e => setSelectedCampaignId(e.target.value)}
+                  className="w-full px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#534AB7]/30 focus:border-[#534AB7] bg-white"
+                >
+                  <option value="">No campaign</option>
+                  {campaigns.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+                {selectedCampaign && (
+                  <p className="mt-1.5 text-xs text-gray-500 bg-gray-50 rounded-lg px-2.5 py-1.5 leading-relaxed">
+                    {selectedCampaign.content}
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* One-time context */}
+          <div>
+            <p className="text-xs font-medium text-gray-500 mb-1.5">One-time instruction</p>
+            <textarea
+              value={oneTimeContext}
+              onChange={e => setOneTimeContext(e.target.value)}
+              placeholder="Guidance for this piece only (e.g. more vulnerable tone, mention a specific event)"
+              rows={2}
+              className="w-full px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-700 placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-[#534AB7]/30 focus:border-[#534AB7]"
+            />
+          </div>
+
+        </div>
+        {/* Hard rules reminder */}
+{hardRules.length > 0 && (
+  <div className="px-4 pb-2">
+    <button
+      onClick={() => setShowHardRules(!showHardRules)}
+      className="w-full flex items-center justify-between px-3 py-2 bg-amber-50 border border-amber-100 rounded-lg text-xs text-amber-700 hover:bg-amber-100/60 transition-colors"
+    >
+      <span className="font-medium">
+        {hardRules.length} hard rule{hardRules.length > 1 ? 's' : ''} active
+      </span>
+      <span className="text-amber-500">{showHardRules ? '−' : '+'}</span>
+    </button>
+    {showHardRules && (
+      <ul className="mt-1.5 space-y-1 px-3 py-2 bg-amber-50/50 rounded-lg">
+        {hardRules.map(r => (
+          <li key={r.id} className="text-xs text-amber-800 flex items-start gap-1.5">
+            <span className="mt-0.5">·</span>
+            <span>{r.content}</span>
+          </li>
+        ))}
+      </ul>
+    )}
+  </div>
+)}    
         {/* Generate button */}
         <div className="p-4 border-t border-gray-100">
           <button
@@ -434,27 +583,20 @@ async function handleCopy() {
         {output && !loading && (
           <div className="p-4 border-t border-gray-100 flex items-center gap-3">
             <button
-  onClick={handleCopy}
-  className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
->
-  {copied ? '✓ Copied!' : 'Copy'}
-</button>
-<button
+              onClick={handleCopy}
+              className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
+            >
+              {copied ? '✓ Copied!' : 'Copy'}
+            </button>
+            <button
               onClick={saveEdit}
               disabled={!isDirty || saving || approved}
               className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {saving ? 'Saving…' : 'Save edit'}
             </button>
-<button
-              onClick={() => {
-                setInput('')
-                setOutput('')
-                setApproved(false)
-                setContentPieceId(null)
-                setActiveRagCount(null)
-                setApproveError(null)
-              }}
+            <button
+              onClick={handleNewPiece}
               className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
             >
               New piece
