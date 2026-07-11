@@ -37,6 +37,69 @@ function getModel() {
   return vertexAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 }
 
+// How many approved pieces to inject as voice exemplars, and how much of each.
+// Kept small so a few long blog posts can't blow out the context window.
+const RAG_EXAMPLE_COUNT = 3
+const RAG_EXAMPLE_MAX_CHARS = 1200
+
+// Persona-scoped retrieval for generation-time grounding. Reads the active RAG
+// set straight from Supabase (the authoritative copy) rather than querying Vertex
+// AI Search: the search index is imported as unstructured `content`, so it carries
+// no persona metadata to filter on and lags approval by minutes. Session RLS plus
+// the workspace/persona checks in the handler keep this scoped to the logged-in
+// owner.
+//
+// Ranking follows the build plan — retrieve for voice, not topic: prefer the same
+// platform/format, then the "gold" signal (pieces the user edited before approving
+// are the strongest voice data), then recency.
+async function loadApprovedExamples(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  workspace_id: string,
+  persona_id: string,
+  format: ContentFormat,
+): Promise<string[]> {
+  try {
+    const { data } = await supabase
+      .from('content_pieces')
+      .select('body, original_body, format, approved_at')
+      .eq('workspace_id', workspace_id)
+      .eq('persona_id', persona_id)
+      .eq('status', 'approved')
+      .eq('rag_excluded', false)
+      .eq('generation_mode', 'standard')
+      .order('approved_at', { ascending: false })
+      .limit(20)
+
+    if (!data || data.length === 0) return []
+
+    // Same format first (the plan frames retrieval "in the same platform/format"),
+    // then edited-then-approved gold pieces, then recency — preserved from the query
+    // order by V8's stable sort. original_body is null for pre-inline-edit rows, so
+    // those safely default to non-gold.
+    const sorted = [...data].sort((a, b) => {
+      const aFmt = a.format === format ? 0 : 1
+      const bFmt = b.format === format ? 0 : 1
+      if (aFmt !== bFmt) return aFmt - bFmt
+      const aGold = a.original_body != null && a.body !== a.original_body ? 0 : 1
+      const bGold = b.original_body != null && b.body !== b.original_body ? 0 : 1
+      return aGold - bGold
+    })
+
+    return sorted
+      .slice(0, RAG_EXAMPLE_COUNT)
+      .map((p) => {
+        const text = (p.body || '').trim()
+        return text.length > RAG_EXAMPLE_MAX_CHARS
+          ? `${text.slice(0, RAG_EXAMPLE_MAX_CHARS)}…`
+          : text
+      })
+      .filter(Boolean)
+  } catch (err) {
+    console.error('RAG example load error (non-fatal):', err)
+    return []
+  }
+}
+
 export async function POST(request: Request) {
   try {
     // 1. Auth check
@@ -140,8 +203,24 @@ export async function POST(request: Request) {
         `FOR THIS PIECE ONLY — the following overrides any standing preferences and campaign guidance above (but never the non-negotiable rules):\n${one_time_context}`,
     ].filter(Boolean).join('\n\n')
 
+    // 4c. Persona-scoped RAG retrieval — the user's own approved work as voice
+    // exemplars. Skipped for one_time ("Fresh start") so a deliberate one-off
+    // exception never gets treated as a false exemplar in future generations.
+    const approvedExamples =
+      generation_mode === 'one_time'
+        ? []
+        : await loadApprovedExamples(supabase, workspace_id, persona_id, format as ContentFormat)
+
     // 5. Build system prompt
     const dna = brandDNA!.sections
+
+    const ragBlock =
+      approvedExamples.length > 0
+        ? `\nPREVIOUSLY APPROVED WORK — real pieces ${dna.identity.full_name} wrote and approved. Match this voice, quality, and register; study the patterns, never copy phrasing or reuse specifics:
+${approvedExamples.map((ex, i) => `--- Example ${i + 1} ---\n${ex}`).join('\n\n')}
+`
+        : ''
+
     const systemPrompt = `You are a content writer for ${dna.identity.full_name}.
 
 BRAND IDENTITY:
@@ -162,7 +241,7 @@ GOOD EXAMPLE (study the patterns, not the words — never lift specific referenc
 ${dna.examples.good}
 
 ${dna.examples.bad ? `AVOID THIS STYLE:\n${dna.examples.bad}` : ''}
-
+${ragBlock}
 AVOID RULES (hard stops):
 ${dna.avoid.join('\n')}
 
