@@ -14,6 +14,16 @@ interface Campaign {
   status: string
 }
 
+interface VoiceCheck {
+  ran: boolean
+  passed: boolean
+  revised: boolean
+  linter_flags: string[]
+  voice_issues: string[]
+  ungrounded_claims: string[]
+  avoid_violations: string[]
+}
+
 const FORMATS: { value: Format; label: string }[] = [
   { value: 'linkedin', label: 'LinkedIn' },
   { value: 'twitter', label: 'Twitter' },
@@ -52,6 +62,10 @@ export default function GeneratePage() {
   const [topics, setTopics] = useState<TrendingTopic[] | null>(null)
   const [topicsLoading, setTopicsLoading] = useState(false)
   const [topicsError, setTopicsError] = useState<string | null>(null)
+
+  // Voice check state
+  const [voiceCheck, setVoiceCheck] = useState<VoiceCheck | null>(null)
+  const [showVoiceCheckDetails, setShowVoiceCheckDetails] = useState(false)
 
   // Approve state
   const [contentPieceId, setContentPieceId] = useState<string | null>(null)
@@ -160,6 +174,8 @@ export default function GeneratePage() {
     setContentPieceId(null)
     setActiveRagCount(null)
     setApproveError(null)
+    setVoiceCheck(null)
+    setShowVoiceCheckDetails(false)
 
     try {
       const metaRes = await fetch('/api/me')
@@ -206,6 +222,13 @@ export default function GeneratePage() {
           const metaData = JSON.parse(raw.slice(metaIdx + '__META__'.length))
           if (metaData?.content_piece_id) {
             setContentPieceId(metaData.content_piece_id)
+          }
+          if (metaData?.voice_check) {
+            setVoiceCheck(metaData.voice_check)
+          }
+          // The voice check revised the draft — show the corrected version.
+          if (typeof metaData?.revised_body === 'string' && metaData.revised_body) {
+            setOutput(metaData.revised_body)
           }
         } catch {}
       }
@@ -331,6 +354,8 @@ export default function GeneratePage() {
     setApproveError(null)
     setOneTimeContext('')
     setIsDirty(false)
+    setVoiceCheck(null)
+    setShowVoiceCheckDetails(false)
   }
 
   // ─── Render ───────────────────────────────────────────────────
@@ -575,6 +600,49 @@ export default function GeneratePage() {
               {approveError}
             </div>
           )}
+
+          {/* Voice check result */}
+          {voiceCheck && output && !loading && !approved && (() => {
+            const issues = [
+              ...voiceCheck.linter_flags,
+              ...voiceCheck.voice_issues.map(i => `Voice drift: ${i}`),
+              ...voiceCheck.ungrounded_claims.map(c => `Ungrounded claim: ${c}`),
+              ...voiceCheck.avoid_violations.map(v => `Avoid rule: ${v}`),
+            ]
+            if (voiceCheck.passed) {
+              return (
+                <div className="mb-4 px-4 py-2.5 bg-green-50 border border-green-100 rounded-lg text-xs text-green-700 flex items-center gap-2">
+                  <span>✓</span>
+                  <span>Voice check passed — on-brand and grounded in your input.</span>
+                </div>
+              )
+            }
+            return (
+              <div className="mb-4 px-4 py-2.5 bg-amber-50 border border-amber-100 rounded-lg text-xs text-amber-800">
+                <button
+                  onClick={() => setShowVoiceCheckDetails(!showVoiceCheckDetails)}
+                  className="w-full flex items-center justify-between"
+                >
+                  <span className="flex items-center gap-2">
+                    <span>⚠</span>
+                    <span>
+                      {voiceCheck.revised
+                        ? `Voice check fixed ${issues.length} issue${issues.length > 1 ? 's' : ''} automatically`
+                        : `Voice check flagged ${issues.length} issue${issues.length > 1 ? 's' : ''} — review before approving`}
+                    </span>
+                  </span>
+                  <span className="text-amber-500">{showVoiceCheckDetails ? '−' : '+'}</span>
+                </button>
+                {showVoiceCheckDetails && (
+                  <ul className="mt-2 space-y-1 pl-6">
+                    {issues.map((issue, i) => (
+                      <li key={i} className="list-disc">{issue}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )
+          })()}
 
           {!output && !loading && !topics && !topicsLoading && (
             <div className="h-full flex items-center justify-center">

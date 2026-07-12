@@ -2,6 +2,7 @@
 import { Storage } from '@google-cloud/storage'
 import { NextResponse } from 'next/server'
 import { DocumentServiceClient } from '@google-cloud/discoveryengine'
+import { runLinter } from '@/lib/critic'
 
 const DATASTORE_ID = 'omni-content-agent-v2_1780394823768'
 const PROJECT_NUMBER = '441385652994'
@@ -48,8 +49,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Content already approved' }, { status: 400 })
     }
 
-    // 4. Critic check
-    const violations = runCriticCheck(piece.body)
+    // 4. Final linter gate (the LLM critique already ran at generation time;
+    //    this re-checks because the body may have been edited since)
+    const violations = runLinter(piece.body)
     if (violations.length > 0 && !confirmed) {
       return NextResponse.json({
         requires_confirmation: true,
@@ -176,40 +178,6 @@ export async function POST(request: Request) {
     console.error('Approve error:', error)
     return NextResponse.json({ error: 'Approval failed' }, { status: 500 })
   }
-}
-
-// ─── Critic check ─────────────────────────────────────────────────────────────
-function runCriticCheck(body: string): string[] {
-  const violations: string[] = []
-
-  const aiPatterns = [
-    /in today'?s fast.?paced world/i,
-    /as we navigate/i,
-    /in the ever.?evolving/i,
-    /it'?s not .+, it'?s/i,
-    /this isn'?t .+, this is/i,
-    /i'?ll be honest/i,
-    /if i'?m being honest/i,
-    /here'?s the truth:/i,
-    /that'?s when it hit me:/i,
-  ]
-
-  for (const pattern of aiPatterns) {
-    if (pattern.test(body)) {
-      violations.push(`Contains AI pattern: "${body.match(pattern)?.[0]}"`)
-    }
-  }
-
-  const colonCount = (body.match(/:/g) || []).length
-  if (colonCount > 3) {
-    violations.push(`Too many colons (${colonCount}) — max 3 recommended`)
-  }
-
-  if (body.length < 50) {
-    violations.push('Content too short — minimum 50 characters')
-  }
-
-  return violations
 }
 
 // ─── Vertex AI Search indexing ────────────────────────────────────────────────

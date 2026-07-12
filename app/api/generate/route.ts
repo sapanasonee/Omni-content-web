@@ -3,6 +3,7 @@ import { Storage } from '@google-cloud/storage'
 import { VertexAI, type GenerateContentRequest } from '@google-cloud/vertexai'
 import { NextResponse } from 'next/server'
 import type { BrandDNA, ContentFormat } from '@/lib/types'
+import { runLinter, runLLMCritic, reviseDraft } from '@/lib/critic'
 
 const FORMAT_INSTRUCTIONS: Record<ContentFormat, string> = {
   linkedin: 'LinkedIn post. Max 1300 characters. Short paragraphs. Max 4 hashtags at the end only. Start with a hook. End with insight or question.',
@@ -305,17 +306,43 @@ supabase
             }
           }
 
-          // Save draft after streaming completes
-           const body = fullText.join('')
+          // Voice check after streaming completes: deterministic linter + one
+          // LLM critique pass against the live Brand DNA, then at most ONE
+          // revise call. Never fatal — on any failure the draft stands.
+          const body = fullText.join('')
+          let finalBody = body
+          let linterFlags: string[] = []
+          let critique = null
+          let revised = false
+
           if (body) {
+            try {
+              linterFlags = runLinter(body)
+              critique = await runLLMCritic(dna, userPrompt, body)
+              const hasIssues =
+                linterFlags.length > 0 || (critique !== null && !critique.passed)
+              if (hasIssues) {
+                const revisedText = await reviseDraft(dna, body, linterFlags, critique)
+                if (revisedText) {
+                  finalBody = revisedText
+                  revised = true
+                }
+              }
+            } catch (err) {
+              console.error('Voice check failed (non-fatal):', err)
+            }
+          }
+
+          // Save draft after streaming completes
+          if (finalBody) {
           const { data: savedPiece } = await supabase
               .from('content_pieces')
               .insert({
                 workspace_id,
                 persona_id,
                 format,
-                body,
-                original_body: body,
+                body: finalBody,
+                original_body: finalBody,
                 status: 'draft',
                 topic: topic || description || 'Untitled',
                 mode,
@@ -334,9 +361,23 @@ supabase
               .select('id')
               .single()
 
-            // Send meta chunk with content_piece_id so client can wire Approve
+            // Send meta chunk: content_piece_id for Approve, plus the voice-check
+            // outcome. revised_body is only present when the revise pass ran, so
+            // the client can swap the streamed draft for the corrected version.
             if (savedPiece?.id) {
-              const metaChunk = `\n__META__${JSON.stringify({ content_piece_id: savedPiece.id })}`
+              const metaChunk = `\n__META__${JSON.stringify({
+                content_piece_id: savedPiece.id,
+                voice_check: {
+                  ran: critique !== null,
+                  passed: linterFlags.length === 0 && (critique === null || critique.passed),
+                  revised,
+                  linter_flags: linterFlags,
+                  voice_issues: critique?.voice_issues || [],
+                  ungrounded_claims: critique?.ungrounded_claims || [],
+                  avoid_violations: critique?.avoid_violations || [],
+                },
+                revised_body: revised ? finalBody : undefined,
+              })}`
               controller.enqueue(encoder.encode(metaChunk))
             }
           }
