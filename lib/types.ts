@@ -42,6 +42,10 @@ export interface OnboardingData {
   // Optional because brand_dna.json files written before this field existed
   // don't have it — readers must guard with `?.`
   topics?: string[]
+  // Transcript of the spoken onboarding answer. Kept as profile source material
+  // (and future activation-draft input) — NEVER indexed as a writing exemplar,
+  // because spoken register is not written register.
+  voice_sample_transcript?: string
   avoid: string[]
   formats: {
     preferred: string[]

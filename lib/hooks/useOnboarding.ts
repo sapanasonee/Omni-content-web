@@ -23,7 +23,8 @@ export function useOnboarding() {
   ) {
     setData(prev => ({
       ...prev,
-      [key]: Array.isArray(prev[key])
+      // Arrays and scalars replace outright; objects merge as partial updates.
+      [key]: Array.isArray(value) || typeof value !== 'object' || value === null
         ? value
         : { ...(prev[key] as object), ...(value as object) },
     }))

@@ -107,6 +107,7 @@ function normalizeSections(raw: unknown): OnboardingData | null {
       bad: str(s.examples?.bad),
     },
     topics: strArray(s.topics),
+    voice_sample_transcript: str((s as Record<string, unknown>).voice_sample_transcript),
     avoid: strArray(s.avoid),
     formats: {
       preferred: strArray(s.formats?.preferred),

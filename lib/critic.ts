@@ -1,5 +1,6 @@
 import { VertexAI } from '@google-cloud/vertexai'
 import type { OnboardingData } from './types'
+import { AI_TELLS } from './ai-tells'
 
 // Two-layer quality gate:
 //  1. runLinter    — deterministic regex for universal AI tells. Free, instant,
@@ -20,24 +21,26 @@ export interface CritiqueResult {
 
 // ─── Layer 1: deterministic linter ───────────────────────────────────────────
 
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 export function runLinter(body: string): string[] {
   const violations: string[] = []
 
-  const aiPatterns = [
-    /in today'?s fast.?paced world/i,
-    /as we navigate/i,
-    /in the ever.?evolving/i,
-    /it'?s not .+, it'?s/i,
-    /this isn'?t .+, this is/i,
-    /i'?ll be honest/i,
-    /if i'?m being honest/i,
-    /here'?s the truth:/i,
-    /that'?s when it hit me:/i,
-  ]
-
-  for (const pattern of aiPatterns) {
+  for (const tell of AI_TELLS) {
+    let pattern: RegExp
+    try {
+      pattern = new RegExp(tell.isRegex ? tell.match : escapeRegex(tell.match), 'i')
+    } catch {
+      console.error(`Invalid AI-tell pattern skipped: ${tell.id}`)
+      continue
+    }
     if (pattern.test(body)) {
-      violations.push(`Contains AI pattern: "${body.match(pattern)?.[0]}"`)
+      const hit = body.match(pattern)?.[0]
+      violations.push(
+        `Contains AI pattern: "${hit}"${tell.note ? ` — ${tell.note}` : ''}`
+      )
     }
   }
 

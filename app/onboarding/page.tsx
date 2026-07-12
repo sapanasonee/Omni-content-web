@@ -1,9 +1,21 @@
 ﻿'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useOnboarding } from '@/lib/hooks/useOnboarding'
 import { cn } from '@/lib/utils'
+
+interface VoiceExtraction {
+  transcript: string
+  full_name: string
+  role: string
+  industry: string
+  audience_description: string
+  audience_segments: string[]
+  voice_description: string
+  tones: string[]
+  topics: string[]
+}
 
 // â”€â”€â”€ Sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -88,6 +100,113 @@ export default function OnboardingPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // ─── Voice intro state ────────────────────────────────────────
+  const MAX_RECORD_SECONDS = 90
+  const [showVoiceIntro, setShowVoiceIntro] = useState(true)
+  const [voiceStage, setVoiceStage] = useState<'intro' | 'recording' | 'processing' | 'done' | 'error'>('intro')
+  const [voiceError, setVoiceError] = useState<string | null>(null)
+  const [recordSeconds, setRecordSeconds] = useState(0)
+  const [extracted, setExtracted] = useState<VoiceExtraction | null>(null)
+  const recorderRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+      recorderRef.current?.stream.getTracks().forEach(t => t.stop())
+    }
+  }, [])
+
+  async function startRecording() {
+    setVoiceError(null)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream)
+      recorderRef.current = recorder
+      chunksRef.current = []
+
+      recorder.ondataavailable = e => {
+        if (e.data.size > 0) chunksRef.current.push(e.data)
+      }
+      recorder.onstop = () => {
+        stream.getTracks().forEach(t => t.stop())
+        if (timerRef.current) clearInterval(timerRef.current)
+        const blob = new Blob(chunksRef.current, { type: recorder.mimeType })
+        processRecording(blob)
+      }
+
+      recorder.start()
+      setRecordSeconds(0)
+      setVoiceStage('recording')
+      timerRef.current = setInterval(() => {
+        setRecordSeconds(s => {
+          if (s + 1 >= MAX_RECORD_SECONDS && recorderRef.current?.state === 'recording') {
+            recorderRef.current.stop()
+          }
+          return s + 1
+        })
+      }, 1000)
+    } catch {
+      setVoiceError("Couldn't access your microphone. You can type instead — it works just as well.")
+      setVoiceStage('error')
+    }
+  }
+
+  function stopRecording() {
+    if (recorderRef.current?.state === 'recording') {
+      recorderRef.current.stop()
+    }
+  }
+
+  async function processRecording(blob: Blob) {
+    setVoiceStage('processing')
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(String(reader.result).split(',')[1] || '')
+        reader.onerror = reject
+        reader.readAsDataURL(blob)
+      })
+
+      const res = await fetch('/api/voice-extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ audio: base64, mime_type: blob.type }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Voice processing failed')
+
+      const e: VoiceExtraction = data.extraction
+      setExtracted(e)
+
+      // Prefill the wizard — only overwrite with non-empty values.
+      const identity: Record<string, string> = {}
+      if (e.full_name) identity.full_name = e.full_name
+      if (e.role) identity.role = e.role
+      if (e.industry) identity.industry = e.industry
+      if (Object.keys(identity).length) updateSection('identity', identity)
+
+      const audience: Record<string, unknown> = {}
+      if (e.audience_description) audience.description = e.audience_description
+      if (e.audience_segments.length) audience.segments = e.audience_segments
+      if (Object.keys(audience).length) updateSection('audience', audience)
+
+      const voice: Record<string, unknown> = {}
+      if (e.voice_description) voice.description = e.voice_description
+      if (e.tones.length) voice.tones = e.tones
+      if (Object.keys(voice).length) updateSection('voice', voice)
+
+      if (e.topics.length) updateSection('topics', e.topics)
+      if (e.transcript) updateSection('voice_sample_transcript', e.transcript)
+
+      setVoiceStage('done')
+    } catch (err) {
+      setVoiceError(err instanceof Error ? err.message : 'Voice processing failed')
+      setVoiceStage('error')
+    }
+  }
+
   async function handleFinish() {
     setSaving(true)
     setError(null)
@@ -139,6 +258,118 @@ export default function OnboardingPage() {
         <div className="text-center space-y-4">
           <div className="w-8 h-8 border-2 border-[#534AB7] border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-sm text-gray-500">Setting up your workspace...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // ─── Voice intro screen ───────────────────────────────────────
+
+  if (showVoiceIntro) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center px-4">
+        <div className="max-w-md w-full text-center space-y-6">
+          <div className="w-8 h-8 bg-[#534AB7] rounded-lg mx-auto" />
+          <div>
+            <h1 className="text-xl font-bold text-gray-900 mb-2">Start with your voice</h1>
+            <p className="text-sm text-gray-500">
+              Talk for up to 90 seconds. Who are you? Who do you write for?
+              And — <span className="text-gray-700 font-medium">what do most people in your space get wrong?</span>
+            </p>
+            <p className="text-xs text-gray-400 mt-2">
+              We&apos;ll listen and fill in your brand profile — you review and adjust everything after.
+            </p>
+          </div>
+
+          {voiceStage === 'intro' && (
+            <div className="space-y-4">
+              <button
+                onClick={startRecording}
+                className="w-20 h-20 bg-[#534AB7] rounded-full mx-auto flex items-center justify-center hover:opacity-90 transition-opacity shadow-lg"
+              >
+                <span className="w-6 h-6 bg-white rounded-full" />
+              </button>
+              <p className="text-xs text-gray-400">Tap to record</p>
+            </div>
+          )}
+
+          {voiceStage === 'recording' && (
+            <div className="space-y-4">
+              <button
+                onClick={stopRecording}
+                className="w-20 h-20 bg-red-500 rounded-full mx-auto flex items-center justify-center hover:opacity-90 transition-opacity shadow-lg animate-pulse"
+              >
+                <span className="w-5 h-5 bg-white rounded-sm" />
+              </button>
+              <p className="text-sm font-medium text-gray-700">
+                {Math.floor(recordSeconds / 60)}:{String(recordSeconds % 60).padStart(2, '0')} / 1:30
+              </p>
+              <p className="text-xs text-gray-400">Tap to stop when you&apos;re done</p>
+            </div>
+          )}
+
+          {voiceStage === 'processing' && (
+            <div className="space-y-4 py-4">
+              <div className="w-8 h-8 border-2 border-[#534AB7] border-t-transparent rounded-full animate-spin mx-auto" />
+              <p className="text-sm text-gray-500">Listening to what you said…</p>
+            </div>
+          )}
+
+          {voiceStage === 'done' && extracted && (
+            <div className="space-y-4">
+              <div className="text-left border border-gray-100 rounded-xl p-4 space-y-3">
+                <p className="text-xs font-medium text-gray-400">Here&apos;s what we caught:</p>
+                {extracted.role && (
+                  <p className="text-sm text-gray-700">{extracted.role}</p>
+                )}
+                {extracted.topics.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {extracted.topics.map(t => (
+                      <span key={t} className="px-2.5 py-1 bg-[#EEEDFE] rounded-full text-xs font-medium text-[#534AB7]">{t}</span>
+                    ))}
+                  </div>
+                )}
+                {extracted.tones.length > 0 && (
+                  <p className="text-xs text-gray-500">Tone: {extracted.tones.join(' · ')}</p>
+                )}
+              </div>
+              <div className="flex gap-2 justify-center">
+                <button
+                  onClick={() => { setExtracted(null); setVoiceStage('intro') }}
+                  className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                >
+                  Re-record
+                </button>
+                <button
+                  onClick={() => setShowVoiceIntro(false)}
+                  className="px-6 py-2 bg-[#534AB7] text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+                >
+                  Review &amp; continue
+                </button>
+              </div>
+            </div>
+          )}
+
+          {voiceStage === 'error' && (
+            <div className="space-y-4">
+              <p className="text-sm text-red-600">{voiceError}</p>
+              <button
+                onClick={() => { setVoiceError(null); setVoiceStage('intro') }}
+                className="px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:border-gray-300 transition-colors"
+              >
+                Try again
+              </button>
+            </div>
+          )}
+
+          {voiceStage !== 'done' && (
+            <button
+              onClick={() => setShowVoiceIntro(false)}
+              className="text-xs text-gray-400 hover:text-gray-600 transition-colors underline underline-offset-2"
+            >
+              I&apos;d rather type it out
+            </button>
+          )}
         </div>
       </div>
     )
