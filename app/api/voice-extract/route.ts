@@ -70,8 +70,11 @@ export async function POST(request: Request) {
 
 Extract the following. Where the recording doesn't cover a field, return an empty string or empty array — never invent.
 
+LANGUAGE RULE: report the primary spoken language. Mostly-English speech with occasional words from another language counts as English ("en"). All extracted fields must always be written in English.
+
 Respond with ONLY this JSON, no prose:
 {
+  "language": "primary language as a lowercase ISO 639-1 code, e.g. en, hi, es",
   "transcript": "faithful transcript of what they said, cleaned of filler words",
   "full_name": "their name if they said it, else empty",
   "role": "what they actually do, in their own framing (1 sentence)",
@@ -114,6 +117,16 @@ Respond with ONLY this JSON, no prose:
       parsed = JSON.parse(raw.slice(start, end + 1))
     } catch {
       return NextResponse.json({ error: 'Could not understand the recording. Try again or type instead.' }, { status: 502 })
+    }
+
+    // English-only for now: a non-English profile would pollute the Brand DNA
+    // that every generation and critique prompt interpolates.
+    const language = str(parsed.language).toLowerCase()
+    if (language && language !== 'en') {
+      return NextResponse.json({
+        error: 'It sounds like you were speaking in another language. Omni works in English for now — please re-record in English, or type instead.',
+        language,
+      }, { status: 422 })
     }
 
     const extraction: Extraction = {
