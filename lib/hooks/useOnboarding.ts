@@ -6,6 +6,7 @@ const INITIAL_DATA: OnboardingData = {
   audience: { description: '', segments: [] },
   voice: { description: '', tones: [], formality: 3, pace: 3 },
   examples: { good: '', bad: '' },
+  topics: [],
   avoid: [],
   formats: { preferred: [], cadence: '' },
 }

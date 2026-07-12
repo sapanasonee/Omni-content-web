@@ -39,6 +39,9 @@ export interface OnboardingData {
     good: string
     bad: string
   }
+  // Optional because brand_dna.json files written before this field existed
+  // don't have it — readers must guard with `?.`
+  topics?: string[]
   avoid: string[]
   formats: {
     preferred: string[]

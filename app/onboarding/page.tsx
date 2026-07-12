@@ -52,6 +52,12 @@ const TONES = [
   'Casual', 'Empathetic', 'Bold', 'Thoughtful',
 ]
 
+const TOPIC_SUGGESTIONS = [
+  'Product thinking', 'AI for creators', 'Building in public',
+  'Content strategy', 'Founder life', 'Career transitions',
+  'Leadership', 'Marketing', 'Fundraising', 'Hiring',
+]
+
 const FORMATS = ['LinkedIn', 'Twitter', 'Newsletter', 'Blog', 'Executive Brief']
 
 const CADENCES = ['Daily', '3-5x per week', '2x per week', 'Weekly', 'Bi-weekly']
@@ -112,6 +118,17 @@ export default function OnboardingPage() {
     updateSection('audience', {
       segments: data.audience.segments.filter((s: string) => s !== seg),
     })
+  }
+
+  function addTopic(topic: string) {
+    const topics = data.topics || []
+    if (!topics.includes(topic)) {
+      updateSection('topics', [...topics, topic])
+    }
+  }
+
+  function removeTopic(topic: string) {
+    updateSection('topics', (data.topics || []).filter((t: string) => t !== topic))
   }
 
   // â”€â”€â”€ Saving state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -248,6 +265,49 @@ export default function OnboardingPage() {
                         className="px-3 py-1.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all"
                       >
                         + {seg}
+                      </button>
+                    ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Topics you write about
+                </label>
+                <p className="text-xs text-gray-400 mb-2">
+                  Used to find trending topics in your niche — the more specific, the sharper the suggestions.
+                </p>
+                {(data.topics || []).length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {(data.topics || []).map(topic => (
+                      <span
+                        key={topic}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#534AB7] text-white rounded-full text-xs font-medium"
+                      >
+                        {topic}
+                        <button
+                          type="button"
+                          onClick={() => removeTopic(topic)}
+                          className="hover:opacity-70 ml-0.5"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <TagInput onAdd={addTopic} />
+                <p className="text-xs text-gray-400 mt-2 mb-1.5">Suggestions:</p>
+                <div className="flex flex-wrap gap-2">
+                  {TOPIC_SUGGESTIONS
+                    .filter((t: string) => !(data.topics || []).includes(t))
+                    .map(topic => (
+                      <button
+                        key={topic}
+                        type="button"
+                        onClick={() => addTopic(topic)}
+                        className="px-3 py-1.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all"
+                      >
+                        + {topic}
                       </button>
                     ))}
                 </div>

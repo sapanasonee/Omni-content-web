@@ -143,8 +143,9 @@ Role: ${dna.identity.role}
 Industry/niche: ${dna.identity.industry}
 Audience: ${dna.audience.description}
 Audience segments: ${dna.audience.segments.join(', ')}
+${dna.topics?.length ? `Topics they write about: ${dna.topics.join(', ')}` : ''}
 
-TASK: Find exactly ${TOPIC_COUNT} trending topics — current events, launches, debates, or shifts from the last few days — that intersect their niche AND their audience's interests.
+TASK: Find exactly ${TOPIC_COUNT} trending topics — current events, launches, debates, or shifts from the last few days — that intersect their niche AND their audience's interests.${dna.topics?.length ? ' Weight heavily toward their declared topics — those are the subjects they want to be known for.' : ''}
 
 RULES:
 - Every topic must be genuinely current (searchable, recent), never evergreen filler.

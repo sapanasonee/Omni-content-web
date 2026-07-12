@@ -226,6 +226,7 @@ ${approvedExamples.map((ex, i) => `--- Example ${i + 1} ---\n${ex}`).join('\n\n'
 BRAND IDENTITY:
 Role: ${dna.identity.role}
 Industry: ${dna.identity.industry}
+${dna.topics?.length ? `Core topics: ${dna.topics.join(', ')}` : ''}
 
 AUDIENCE:
 ${dna.audience.description}
