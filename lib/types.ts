@@ -79,6 +79,13 @@ export interface ContentPiece {
   approved_at?: string
 }
 
+// Trending topics (research feature)
+export interface TrendingTopic {
+  title: string
+  why_it_matters: string
+  content_angle: string
+}
+
 // Plan limits
 export const PLAN_LIMITS = {
   solo: {

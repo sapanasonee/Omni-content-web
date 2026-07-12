@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { cn } from '@/lib/utils' 
+import { cn } from '@/lib/utils'
+import type { TrendingTopic } from '@/lib/types'
 
 type Format = 'linkedin' | 'twitter' | 'newsletter' | 'blog' | 'exec_brief'
 type Mode = 'brief' | 'raw' | 'describe'
@@ -46,6 +47,11 @@ export default function GeneratePage() {
   const [savingCampaign, setSavingCampaign] = useState(false)
   const [hardRules, setHardRules] = useState<{ id: string; content: string }[]>([])
   const [showHardRules, setShowHardRules] = useState(false)
+
+  // Trending topics state
+  const [topics, setTopics] = useState<TrendingTopic[] | null>(null)
+  const [topicsLoading, setTopicsLoading] = useState(false)
+  const [topicsError, setTopicsError] = useState<string | null>(null)
 
   // Approve state
   const [contentPieceId, setContentPieceId] = useState<string | null>(null)
@@ -116,6 +122,31 @@ export default function GeneratePage() {
     } finally {
       setSavingCampaign(false)
     }
+  }
+
+  // ─── Trending topics ──────────────────────────────────────────
+
+  async function loadTopics(refresh = false) {
+    setTopicsLoading(true)
+    setTopicsError(null)
+    try {
+      const meta = await (await fetch('/api/me')).json()
+      const res = await fetch(
+        `/api/topics?workspace_id=${meta.workspace_id}&persona_id=${meta.persona_id}${refresh ? '&refresh=1' : ''}`
+      )
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to load topics')
+      setTopics(data.topics)
+    } catch (err) {
+      setTopicsError(err instanceof Error ? err.message : 'Failed to load topics')
+    } finally {
+      setTopicsLoading(false)
+    }
+  }
+
+  function handleUseTopic(topic: TrendingTopic) {
+    setMode('brief')
+    setInput(`${topic.title}\n\nAngle: ${topic.content_angle}`)
   }
 
   // ─── Generate ─────────────────────────────────────────────────
@@ -545,11 +576,74 @@ export default function GeneratePage() {
             </div>
           )}
 
-          {!output && !loading && (
-            <div className="h-full flex items-center justify-center text-gray-300">
-              <div className="text-center">
+          {!output && !loading && !topics && !topicsLoading && (
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center max-w-sm">
                 <div className="w-12 h-12 bg-gray-100 rounded-xl mx-auto mb-3" />
-                <p className="text-sm">Your content will appear here</p>
+                <p className="text-sm text-gray-400 mb-1">Not sure what to write about?</p>
+                <p className="text-xs text-gray-400 mb-4">
+                  Get 5 topics trending in your niche right now — each with an angle you can make yours.
+                </p>
+                <button
+                  onClick={() => loadTopics()}
+                  className="px-4 py-2 bg-[#534AB7] text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+                >
+                  Show me what&apos;s trending
+                </button>
+                {topicsError && (
+                  <p className="mt-3 text-xs text-red-600">{topicsError}</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {!output && !loading && topicsLoading && (
+            <div className="h-full flex items-center justify-center text-gray-400">
+              <div className="text-center">
+                <div className="w-6 h-6 border-2 border-[#534AB7] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                <p className="text-sm">Searching what&apos;s trending in your niche…</p>
+              </div>
+            </div>
+          )}
+
+          {!output && !loading && topics && !topicsLoading && (
+            <div className="max-w-2xl">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-sm font-semibold text-gray-900">Trending in your niche</h2>
+                  <p className="text-xs text-gray-400">Pick one and make it yours — your take, your voice.</p>
+                </div>
+                <button
+                  onClick={() => loadTopics(true)}
+                  className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  ↻ Refresh
+                </button>
+              </div>
+              {topicsError && (
+                <p className="mb-3 text-xs text-red-600">{topicsError}</p>
+              )}
+              <div className="space-y-3">
+                {topics.map((t, i) => (
+                  <div
+                    key={i}
+                    className="p-4 border border-gray-100 rounded-xl hover:border-[#534AB7]/30 transition-colors"
+                  >
+                    <p className="text-sm font-medium text-gray-900 mb-1">{t.title}</p>
+                    {t.why_it_matters && (
+                      <p className="text-xs text-gray-500 mb-1">{t.why_it_matters}</p>
+                    )}
+                    {t.content_angle && (
+                      <p className="text-xs text-[#534AB7]/80 mb-3">Angle: {t.content_angle}</p>
+                    )}
+                    <button
+                      onClick={() => handleUseTopic(t)}
+                      className="px-3 py-1.5 bg-[#EEEDFE] text-[#534AB7] rounded-lg text-xs font-medium hover:bg-[#534AB7] hover:text-white transition-colors"
+                    >
+                      Write on this →
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
           )}
