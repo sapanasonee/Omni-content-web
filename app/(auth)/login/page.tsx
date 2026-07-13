@@ -62,7 +62,7 @@ function LoginForm() {
       <div className="w-full max-w-sm space-y-8 px-4">
         <div className="text-center space-y-2">
           <div className="w-10 h-10 bg-[#534AB7] rounded-xl mx-auto mb-4" />
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900">Omni Content Agent</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">Vowwl</h1>
           <p className="text-sm text-gray-500">Enter your email to sign in</p>
         </div>
 

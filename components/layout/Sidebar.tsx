@@ -48,7 +48,7 @@ export default function Sidebar({ workspace, personas, userEmail }: SidebarProps
       <div className="px-4 py-4 border-b border-gray-100">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 bg-[#534AB7] rounded-lg" />
-          <span className="text-sm font-bold text-gray-900">Omni</span>
+          <span className="text-sm font-bold text-gray-900">Vowwl</span>
         </div>
       </div>
 

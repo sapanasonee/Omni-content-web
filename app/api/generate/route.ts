@@ -362,6 +362,16 @@ Output only the final content — no preamble, no labels, just the content itsel
                   campaign: campaignContext,
                   one_time: one_time_context || null,
                   tone_override: tone_override || null,
+                  // Persisted for evals: first-pass quality per generation.
+                  voice_check: {
+                    ran: critique !== null,
+                    passed: linterFlags.length === 0 && (critique === null || critique.passed),
+                    revised,
+                    linter_flags: linterFlags,
+                    voice_issues: critique?.voice_issues || [],
+                    ungrounded_claims: critique?.ungrounded_claims || [],
+                    avoid_violations: critique?.avoid_violations || [],
+                  },
                 },
               })
               .select('id')

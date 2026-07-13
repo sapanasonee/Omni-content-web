@@ -1,6 +1,23 @@
 import { createClient } from '@/lib/supabase/server'
+import { Storage } from '@google-cloud/storage'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
+import { computeNudge } from '@/lib/streak'
+import type { BrandDNA } from '@/lib/types'
+
+async function loadCadence(workspace_id: string, persona_id: string): Promise<string | undefined> {
+  try {
+    const storage = new Storage({ projectId: process.env.GCP_PROJECT_ID })
+    const bucket = storage.bucket(process.env.GCS_BUCKET_NAME!)
+    const [content] = await bucket
+      .file(`workspaces/${workspace_id}/personas/${persona_id}/brand_dna.json`)
+      .download()
+    const dna: BrandDNA = JSON.parse(content.toString())
+    return dna.sections.formats?.cadence || undefined
+  } catch {
+    return undefined
+  }
+}
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -12,21 +29,67 @@ export default async function DashboardPage() {
     .eq('owner_id', user!.id)
     .single()
 
-  const { data: recentContent } = await supabase
-    .from('content_pieces')
-    .select('*')
+  const { data: persona } = await supabase
+    .from('personas')
+    .select('id')
     .eq('workspace_id', workspace?.id)
-    .order('created_at', { ascending: false })
-    .limit(5)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .single()
+
+  const [{ data: recentContent }, { data: approvals }] = await Promise.all([
+    supabase
+      .from('content_pieces')
+      .select('*')
+      .eq('workspace_id', workspace?.id)
+      .order('created_at', { ascending: false })
+      .limit(5),
+    supabase
+      .from('content_pieces')
+      .select('approved_at')
+      .eq('workspace_id', workspace?.id)
+      .eq('status', 'approved')
+      .not('approved_at', 'is', null)
+      .order('approved_at', { ascending: false })
+      .limit(200),
+  ])
+
+  const cadence = workspace && persona
+    ? await loadCadence(workspace.id, persona.id)
+    : undefined
+
+  const nudgeState = computeNudge(
+    (approvals || []).map(a => new Date(a.approved_at as string)),
+    cadence,
+  )
 
   return (
     <div className="p-8 max-w-4xl">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Good to see you back.</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          {workspace?.plan_tier === 'solo' && `${workspace.generations_used}/30 generations used this month`}
-        </p>
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Good to see you back.</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            {workspace?.plan_tier === 'solo' && `${workspace.generations_used}/30 generations used this month`}
+          </p>
+        </div>
+        {nudgeState.streakWeeks > 0 && (
+          <div className="px-3 py-1.5 bg-orange-50 border border-orange-100 rounded-full text-xs font-medium text-orange-600">
+            🔥 {nudgeState.streakWeeks}-week streak
+          </div>
+        )}
       </div>
+
+      {nudgeState.nudge && nudgeState.message && (
+        <Link
+          href="/generate"
+          className="block mb-6 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl hover:border-amber-300 transition-colors"
+        >
+          <p className="text-sm text-amber-800">
+            {nudgeState.message}
+            <span className="ml-1.5 font-medium underline underline-offset-2">Write something →</span>
+          </p>
+        </Link>
+      )}
 
       <div className="grid grid-cols-2 gap-4 mb-8">
         <Link

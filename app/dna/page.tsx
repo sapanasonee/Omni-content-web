@@ -649,7 +649,7 @@ export default function DNAPage() {
         ) : !showAdd ? (
           <div className="border border-dashed border-gray-200 rounded-lg p-6 text-center mb-4">
             <p className="text-sm text-gray-400 mb-3">
-              No standing rules yet. Rules you add here will guide every piece Omni generates.
+              No standing rules yet. Rules you add here will guide every piece Vowwl generates.
             </p>
             <button
               onClick={() => setShowAdd(true)}

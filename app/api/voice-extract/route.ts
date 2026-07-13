@@ -124,7 +124,7 @@ Respond with ONLY this JSON, no prose:
     const language = str(parsed.language).toLowerCase()
     if (language && language !== 'en') {
       return NextResponse.json({
-        error: 'It sounds like you were speaking in another language. Omni works in English for now — please re-record in English, or type instead.',
+        error: 'It sounds like you were speaking in another language. Vowwl works in English for now — please re-record in English, or type instead.',
         language,
       }, { status: 422 })
     }
