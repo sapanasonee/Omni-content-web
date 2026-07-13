@@ -83,6 +83,15 @@ export default function Home() {
         <p className="mt-3 text-xs text-gray-400">
           Magic-link sign in · 30 free pieces a month · no credit card
         </p>
+        <p className="mt-4 text-sm text-gray-500">
+          Want a personal walkthrough instead?{' '}
+          <a
+            href="mailto:sonisapna45@gmail.com?subject=Vowwl%20walkthrough"
+            className="text-[#534AB7] font-medium hover:opacity-80 transition-opacity underline underline-offset-2"
+          >
+            Book time with me
+          </a>
+        </p>
       </header>
 
       {/* How it works */}
