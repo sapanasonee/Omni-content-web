@@ -67,6 +67,10 @@ export default function GeneratePage() {
   const [voiceCheck, setVoiceCheck] = useState<VoiceCheck | null>(null)
   const [showVoiceCheckDetails, setShowVoiceCheckDetails] = useState(false)
 
+  // Rule suggestion state (diff→rulebook)
+  const [ruleSuggestion, setRuleSuggestion] = useState<{ id: string; content: string } | null>(null)
+  const [ruleSuggestionState, setRuleSuggestionState] = useState<'pending' | 'accepting' | 'accepted' | 'dismissed'>('pending')
+
   // Approve state
   const [contentPieceId, setContentPieceId] = useState<string | null>(null)
   const [approving, setApproving] = useState(false)
@@ -316,11 +320,38 @@ export default function GeneratePage() {
       setApproved(true)
       setActiveRagCount(data.active_rag_count)
       setShowViolationsModal(false)
+      if (data.rule_suggestion) {
+        setRuleSuggestion(data.rule_suggestion)
+        setRuleSuggestionState('pending')
+      }
 
     } catch (err) {
       setApproveError(err instanceof Error ? err.message : 'Approval failed')
     } finally {
       setApproving(false)
+    }
+  }
+
+  // ─── Rule suggestion (diff→rulebook) ──────────────────────────
+
+  async function respondToRuleSuggestion(accept: boolean) {
+    if (!ruleSuggestion || ruleSuggestionState === 'accepting') return
+    setRuleSuggestionState('accepting')
+    try {
+      const meta = await (await fetch('/api/me')).json()
+      const res = await fetch('/api/contexts', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: ruleSuggestion.id,
+          workspace_id: meta.workspace_id,
+          status: accept ? 'active' : 'closed',
+        }),
+      })
+      if (!res.ok) throw new Error()
+      setRuleSuggestionState(accept ? 'accepted' : 'dismissed')
+    } catch {
+      setRuleSuggestionState('pending')
     }
   }
 
@@ -356,6 +387,8 @@ export default function GeneratePage() {
     setIsDirty(false)
     setVoiceCheck(null)
     setShowVoiceCheckDetails(false)
+    setRuleSuggestion(null)
+    setRuleSuggestionState('pending')
   }
 
   // ─── Render ───────────────────────────────────────────────────
@@ -598,6 +631,39 @@ export default function GeneratePage() {
           {approveError && (
             <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
               {approveError}
+            </div>
+          )}
+
+          {/* Rule suggestion from edit pattern */}
+          {ruleSuggestion && ruleSuggestionState !== 'dismissed' && (
+            <div className="mb-4 px-4 py-3 bg-[#FAFAFF] border border-[#534AB7]/20 rounded-lg text-sm">
+              {ruleSuggestionState === 'accepted' ? (
+                <p className="text-[#534AB7] text-xs flex items-center gap-2">
+                  <span>✓</span>
+                  <span>Added to your standing rules — every future piece will follow it.</span>
+                </p>
+              ) : (
+                <>
+                  <p className="text-xs font-medium text-gray-500 mb-1">Noticed a pattern in your edits</p>
+                  <p className="text-sm text-gray-800 mb-2.5">&ldquo;{ruleSuggestion.content}&rdquo;</p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => respondToRuleSuggestion(true)}
+                      disabled={ruleSuggestionState === 'accepting'}
+                      className="px-3 py-1.5 bg-[#534AB7] text-white rounded-lg text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+                    >
+                      {ruleSuggestionState === 'accepting' ? 'Saving…' : 'Make it a rule'}
+                    </button>
+                    <button
+                      onClick={() => respondToRuleSuggestion(false)}
+                      disabled={ruleSuggestionState === 'accepting'}
+                      className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                    >
+                      No thanks
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
 

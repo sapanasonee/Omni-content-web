@@ -3,6 +3,7 @@ import { Storage } from '@google-cloud/storage'
 import { NextResponse } from 'next/server'
 import { DocumentServiceClient } from '@google-cloud/discoveryengine'
 import { runLinter } from '@/lib/critic'
+import { analyzeEdit, type EditDelta } from '@/lib/rulebook'
 
 const DATASTORE_ID = 'omni-content-agent-v2_1780394823768'
 const PROJECT_NUMBER = '441385652994'
@@ -164,6 +165,74 @@ export async function POST(request: Request) {
         .eq('id', persona_id)
     }
 
+    // 12. Diff→rulebook: the user edited before approving, so ONE cheap-model
+    //     call categorizes the delta and checks the persona's edit history for
+    //     a repeated preference worth proposing as a standing rule. Suggestions
+    //     land in contexts with status='suggested' — generation only reads
+    //     'active', so nothing changes until the user accepts. Never fatal.
+    let ruleSuggestion: { id: string; content: string } | null = null
+    const wasEdited =
+      typeof piece.original_body === 'string' &&
+      piece.original_body.trim() !== '' &&
+      piece.body.trim() !== piece.original_body.trim()
+
+    if (wasEdited) {
+      try {
+        const [{ data: history }, { data: existingRules }] = await Promise.all([
+          supabase
+            .from('content_edits')
+            .select('deltas')
+            .eq('persona_id', persona_id)
+            .order('created_at', { ascending: false })
+            .limit(10),
+          supabase
+            .from('contexts')
+            .select('content')
+            .eq('persona_id', persona_id)
+            .eq('scope', 'permanent')
+            .in('status', ['active', 'suggested']),
+        ])
+
+        const analysis = await analyzeEdit(
+          piece.original_body,
+          piece.body,
+          (history || []).map(h => h.deltas as EditDelta[]),
+          (existingRules || []).map(r => r.content as string),
+        )
+
+        if (analysis && analysis.deltas.length > 0) {
+          const { error: editInsertError } = await supabase
+            .from('content_edits')
+            .insert({
+              workspace_id,
+              persona_id,
+              content_piece_id,
+              deltas: analysis.deltas,
+            })
+          if (editInsertError) console.error('content_edits insert failed (non-fatal):', editInsertError)
+
+          if (analysis.suggested_rule) {
+            const { data: suggestion, error: suggError } = await supabase
+              .from('contexts')
+              .insert({
+                workspace_id,
+                persona_id,
+                scope: 'permanent',
+                tier: 'default',
+                status: 'suggested',
+                content: analysis.suggested_rule,
+              })
+              .select('id, content')
+              .single()
+            if (suggError) console.error('Rule suggestion insert failed (non-fatal):', suggError)
+            else ruleSuggestion = suggestion
+          }
+        }
+      } catch (err) {
+        console.error('Rulebook analysis failed (non-fatal):', err)
+      }
+    }
+
     return NextResponse.json({
       success: true,
       quality_score,
@@ -172,6 +241,7 @@ export async function POST(request: Request) {
       rag_indexed: !piece.rag_excluded && piece.generation_mode === 'standard',
       active_rag_count: Math.min((persona.active_rag_count || 0) + 1, SOLO_RAG_LIMIT),
       archived_id: archivedId,
+      rule_suggestion: ruleSuggestion,
     })
 
   } catch (error) {
