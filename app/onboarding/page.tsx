@@ -19,6 +19,225 @@ interface VoiceExtraction {
 
 // â”€â”€â”€ Sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+const ACTIVATION_FORMAT_MAP: Record<string, { value: string; label: string }> = {
+  'LinkedIn': { value: 'linkedin', label: 'LinkedIn' },
+  'Twitter': { value: 'twitter', label: 'Twitter' },
+  'Newsletter': { value: 'newsletter', label: 'Newsletter' },
+  'Blog': { value: 'blog', label: 'Blog' },
+  'Executive Brief': { value: 'exec_brief', label: 'Exec Brief' },
+}
+
+const ACTIVATION_DEFAULTS = [
+  { value: 'linkedin', label: 'LinkedIn' },
+  { value: 'twitter', label: 'Twitter' },
+  { value: 'newsletter', label: 'Newsletter' },
+]
+
+interface ActivationDraft {
+  format: string
+  label: string
+  text: string
+  status: 'streaming' | 'done' | 'error'
+  pieceId: string | null
+  approving: boolean
+  approved: boolean
+  violations: string[] | null
+}
+
+function ActivationDrafts({
+  workspaceId, personaId, transcript, preferredFormats, onDone,
+}: {
+  workspaceId: string
+  personaId: string
+  transcript: string
+  preferredFormats: string[]
+  onDone: () => void
+}) {
+  const [drafts, setDrafts] = useState<ActivationDraft[]>([])
+  const startedRef = useRef(false)
+
+  useEffect(() => {
+    if (startedRef.current) return
+    startedRef.current = true
+
+    // Top 3 preferred platforms, topped up with defaults if they picked fewer.
+    const picked = preferredFormats
+      .map(p => ACTIVATION_FORMAT_MAP[p])
+      .filter(Boolean)
+    for (const d of ACTIVATION_DEFAULTS) {
+      if (picked.length >= 3) break
+      if (!picked.some(p => p.value === d.value)) picked.push(d)
+    }
+    const targets = picked.slice(0, 3)
+
+    setDrafts(targets.map(t => ({
+      format: t.value,
+      label: t.label,
+      text: '',
+      status: 'streaming' as const,
+      pieceId: null,
+      approving: false,
+      approved: false,
+      violations: null,
+    })))
+
+    targets.forEach((t, idx) => runGeneration(idx, t.value))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  function patchDraft(idx: number, updates: Partial<ActivationDraft>) {
+    setDrafts(prev => prev.map((d, i) => (i === idx ? { ...d, ...updates } : d)))
+  }
+
+  async function runGeneration(idx: number, format: string) {
+    try {
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workspace_id: workspaceId,
+          persona_id: personaId,
+          format,
+          mode: 'raw',
+          raw_input: transcript,
+          generation_mode: 'standard',
+          activation: true,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Generation failed')
+      }
+
+      const reader = res.body!.getReader()
+      const decoder = new TextDecoder()
+      let raw = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        raw += decoder.decode(value, { stream: true })
+        const metaIdx = raw.indexOf('__META__')
+        patchDraft(idx, { text: metaIdx === -1 ? raw : raw.slice(0, metaIdx) })
+      }
+
+      const metaIdx = raw.indexOf('__META__')
+      let finalText = metaIdx === -1 ? raw : raw.slice(0, metaIdx)
+      let pieceId: string | null = null
+      if (metaIdx !== -1) {
+        try {
+          const meta = JSON.parse(raw.slice(metaIdx + '__META__'.length))
+          if (meta?.content_piece_id) pieceId = meta.content_piece_id
+          if (typeof meta?.revised_body === 'string' && meta.revised_body) {
+            finalText = meta.revised_body
+          }
+        } catch {}
+      }
+
+      patchDraft(idx, { text: finalText, status: 'done', pieceId })
+    } catch {
+      patchDraft(idx, { status: 'error' })
+    }
+  }
+
+  async function approveDraft(idx: number, confirmed = false) {
+    const draft = drafts[idx]
+    if (!draft?.pieceId || draft.approving || draft.approved) return
+    patchDraft(idx, { approving: true })
+    try {
+      const res = await fetch('/api/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content_piece_id: draft.pieceId,
+          workspace_id: workspaceId,
+          persona_id: personaId,
+          confirmed,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Approval failed')
+      if (data.requires_confirmation) {
+        patchDraft(idx, { approving: false, violations: data.violations || [] })
+        return
+      }
+      patchDraft(idx, { approving: false, approved: true, violations: null })
+    } catch {
+      patchDraft(idx, { approving: false })
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-white py-12 px-4">
+      <div className="max-w-4xl mx-auto space-y-8">
+        <div className="text-center space-y-1">
+          <div className="w-8 h-8 bg-[#534AB7] rounded-lg mx-auto mb-3" />
+          <h1 className="text-xl font-bold text-gray-900">Your first three drafts</h1>
+          <p className="text-sm text-gray-500">
+            Written from what you just said — in your voice. Approve the ones that sound like you; they become your brand memory.
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-4">
+          {drafts.map((draft, idx) => (
+            <div key={draft.format} className="border border-gray-100 rounded-xl flex flex-col overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between">
+                <p className="text-xs font-semibold text-gray-700">{draft.label}</p>
+                {draft.status === 'streaming' && (
+                  <span className="w-3.5 h-3.5 border-2 border-[#534AB7] border-t-transparent rounded-full animate-spin" />
+                )}
+              </div>
+              <div className="flex-1 p-4 max-h-72 overflow-auto">
+                {draft.status === 'error' ? (
+                  <p className="text-xs text-red-600">Couldn&apos;t generate this one. You can create it later from the Generate page.</p>
+                ) : (
+                  <p className="text-xs text-gray-800 whitespace-pre-wrap leading-relaxed">
+                    {draft.text}
+                    {draft.status === 'streaming' && (
+                      <span className="inline-block w-1 h-3 bg-[#534AB7] animate-pulse ml-0.5 align-middle" />
+                    )}
+                  </p>
+                )}
+              </div>
+              {draft.status === 'done' && (
+                <div className="px-4 py-3 border-t border-gray-100">
+                  {draft.violations && !draft.approved && (
+                    <div className="mb-2 text-xs text-amber-700 bg-amber-50 rounded-lg px-2.5 py-1.5">
+                      Quality flags: {draft.violations.slice(0, 2).join('; ')}
+                    </div>
+                  )}
+                  <button
+                    onClick={() => approveDraft(idx, draft.violations !== null)}
+                    disabled={draft.approving || draft.approved || !draft.pieceId}
+                    className={cn(
+                      'w-full py-2 rounded-lg text-xs font-medium transition-all',
+                      draft.approved
+                        ? 'bg-green-500 text-white cursor-default'
+                        : 'bg-[#534AB7] text-white hover:opacity-90 disabled:opacity-40'
+                    )}
+                  >
+                    {draft.approved ? '✓ Approved' : draft.approving ? 'Approving…' : draft.violations ? 'Approve anyway' : 'Approve'}
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="text-center">
+          <button
+            onClick={onDone}
+            className="px-6 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+          >
+            Continue to dashboard →
+          </button>
+          <p className="text-xs text-gray-400 mt-2">These drafts are saved — you can edit or approve them anytime from your Library.</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function TagInput({ onAdd }: { onAdd: (tag: string) => void }) {
   const [value, setValue] = useState('')
 
@@ -99,6 +318,7 @@ export default function OnboardingPage() {
 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [activationIds, setActivationIds] = useState<{ workspace_id: string; persona_id: string } | null>(null)
 
   // ─── Voice intro state ────────────────────────────────────────
   const MAX_RECORD_SECONDS = 90
@@ -220,7 +440,16 @@ export default function OnboardingPage() {
         const err = await res.json()
         throw new Error(err.error || 'Something went wrong')
       }
-      router.push('/dashboard')
+      const result = await res.json()
+      // Activation moment: with a voice transcript we can produce first drafts
+      // immediately. Without one, land on Generate where trending topics kill
+      // the blank page instead.
+      if (data.voice_sample_transcript?.trim() && result.workspace_id && result.persona_id) {
+        setActivationIds({ workspace_id: result.workspace_id, persona_id: result.persona_id })
+        setSaving(false)
+      } else {
+        router.push('/generate')
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
       setSaving(false)
@@ -260,6 +489,20 @@ export default function OnboardingPage() {
           <p className="text-sm text-gray-500">Setting up your workspace...</p>
         </div>
       </div>
+    )
+  }
+
+  // ─── Activation: first three drafts ───────────────────────────
+
+  if (activationIds) {
+    return (
+      <ActivationDrafts
+        workspaceId={activationIds.workspace_id}
+        personaId={activationIds.persona_id}
+        transcript={data.voice_sample_transcript || ''}
+        preferredFormats={data.formats.preferred}
+        onDone={() => router.push('/dashboard')}
+      />
     )
   }
 

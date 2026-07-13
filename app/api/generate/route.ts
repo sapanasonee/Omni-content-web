@@ -115,7 +115,8 @@ export async function POST(request: Request) {
       workspace_id, persona_id, format, mode,
       topic, raw_input, description,
       tone_override, generation_mode,
-      campaign_context_id, one_time_context
+      campaign_context_id, one_time_context,
+      activation
     } = await request.json()
 
     if (!workspace_id || !persona_id || !format) {
@@ -283,14 +284,19 @@ Output only the final content — no preamble, no labels, just the content itsel
     const model = getModel()
     const streamingResult = await model.generateContentStream(requestBody)
 
-  // 8. Atomically increment generation count (RPC enforces limit under concurrency)
-supabase
-  .rpc('increment_generation_count', { p_workspace_id: workspace_id })
-  .then(({ data }) => {
-    if (data && !data.success && data.reason === 'limit_reached') {
-      console.warn(`Limit race detected for workspace ${workspace_id}`)
-    }
-  })
+  // 8. Atomically increment generation count (RPC enforces limit under concurrency).
+  // Activation drafts (onboarding's first three) are quota-exempt — but only
+  // while the workspace is brand new, so the flag can't be abused later.
+  const isActivation = activation === true && (workspace.generations_used || 0) < 3
+  if (!isActivation) {
+    supabase
+      .rpc('increment_generation_count', { p_workspace_id: workspace_id })
+      .then(({ data }) => {
+        if (data && !data.success && data.reason === 'limit_reached') {
+          console.warn(`Limit race detected for workspace ${workspace_id}`)
+        }
+      })
+  }
   // 9. Stream response, save draft, return content_piece_id via meta chunk
     const fullText: string[] = []
     const encoder = new TextEncoder()

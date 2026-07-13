@@ -15,6 +15,7 @@ export interface EditDelta {
     | 'claim_softened'
     | 'detail_added'
     | 'tone_shifted'
+    | 'restructured'
     | 'other'
   detail: string
 }
@@ -26,7 +27,8 @@ export interface EditAnalysis {
 
 const CATEGORIES = [
   'phrase_killed', 'shortened', 'opener_changed',
-  'claim_softened', 'detail_added', 'tone_shifted', 'other',
+  'claim_softened', 'detail_added', 'tone_shifted',
+  'restructured', 'other',
 ] as const
 
 function extractJSON(raw: string): unknown {
@@ -78,7 +80,10 @@ TASK 1 — categorize this edit's meaningful changes (max 4). Categories:
 - claim_softened: they weakened or removed a bold/unsourced claim
 - detail_added: they added a concrete detail, name, or example
 - tone_shifted: they changed register (quote before→after briefly)
+- restructured: they changed the FORM — prose into bullet points (or the reverse), added/removed subheadings, split or merged paragraphs, reordered sections
 - other: anything else meaningful
+
+Patterns live in HOW they edit, never in the topic — the same structural preference across posts about completely different subjects (e.g. always converting lists to bullets, always opening with a specific pain) is exactly what Task 2 should catch.
 Ignore trivial changes (typos, whitespace, punctuation-only).
 
 TASK 2 — pattern check: counting THIS edit plus the history, does any preference now appear 3 or more times AND is not covered by an existing rule? If yes, write ONE standing rule as a short imperative instruction a writer could follow (e.g. "Never use the phrase 'game-changer'", "Open with a specific moment, not a summary"). If no clear repeated pattern, null.
