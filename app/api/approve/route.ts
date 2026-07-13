@@ -185,12 +185,13 @@ export async function POST(request: Request) {
             .eq('persona_id', persona_id)
             .order('created_at', { ascending: false })
             .limit(10),
+          // Include closed rules so a dismissed suggestion is never re-proposed.
           supabase
             .from('contexts')
             .select('content')
             .eq('persona_id', persona_id)
             .eq('scope', 'permanent')
-            .in('status', ['active', 'suggested']),
+            .in('status', ['active', 'suggested', 'closed']),
         ])
 
         const analysis = await analyzeEdit(
