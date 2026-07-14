@@ -28,6 +28,20 @@ function getGroundedModel() {
   })
 }
 
+// Catches the classic AI-listicle title shape ("Phrase: explanation") that
+// the prompt asks the model to avoid — backstop for when it slips through anyway.
+const COLON_TITLE_PATTERN = /^[^:?!]{3,60}:\s+\S/
+
+// Strips a leading "Phrase: " clause from a colon-split title, keeping
+// whichever side reads better as a standalone headline.
+function stripColonTitle(title: string): string {
+  const idx = title.indexOf(':')
+  if (idx === -1) return title
+  const before = title.slice(0, idx).trim()
+  const after = title.slice(idx + 1).trim()
+  return after.length >= before.length ? after : before
+}
+
 // Grounded responses often wrap JSON in prose or code fences — extract the
 // first top-level array rather than trusting the raw text to parse.
 function parseTopics(raw: string): TrendingTopic[] {
@@ -40,11 +54,14 @@ function parseTopics(raw: string): TrendingTopic[] {
     return parsed
       .filter((t) => t && typeof t.title === 'string' && t.title.trim())
       .slice(0, TOPIC_COUNT)
-      .map((t) => ({
-        title: String(t.title).trim(),
-        why_it_matters: String(t.why_it_matters || '').trim(),
-        content_angle: String(t.content_angle || '').trim(),
-      }))
+      .map((t) => {
+        const title = String(t.title).trim()
+        return {
+          title: COLON_TITLE_PATTERN.test(title) ? stripColonTitle(title) : title,
+          why_it_matters: String(t.why_it_matters || '').trim(),
+          content_angle: String(t.content_angle || '').trim(),
+        }
+      })
   } catch {
     return []
   }
@@ -152,10 +169,16 @@ RULES:
 - Never generic news. Each topic must give THIS founder something to hang an opinion or experience on.
 - No topics that require expertise the founder doesn't claim.
 
+TITLE STYLE: Write "title" as a plain statement or question, specific enough to search. Never use "Phrase: explanation" colon-split framing.
+Bad: "The Funding Reset: Why Seed Rounds Are Shrinking"
+Good: "Seed rounds are shrinking again"
+Bad: "AI Hiring: What Founders Get Wrong"
+Good: "Founders are hiring AI engineers for the wrong reasons"
+
 Respond with ONLY a JSON array, no prose, no markdown fences:
 [
   {
-    "title": "short topic title, specific enough to search",
+    "title": "short topic title, specific enough to search, no colon framing",
     "why_it_matters": "one sentence connecting it to this founder's niche and audience",
     "content_angle": "one sentence: the opinion/experience angle they could take in their voice"
   }
