@@ -14,14 +14,14 @@ const CHANNELS: { id: Channel; label: string }[] = [
 
 const PREVIEWS: Record<Persona, Record<Channel, string>> = {
   founder: {
-    linkedin: `Our MRR grew 40% this quarter — not because we landed one big client, but because I stopped hiring senior VPs too early.\n\nHere's the counterintuitive lesson six months of hiring mistakes taught me...`,
-    twitter: `1/ We almost ran out of runway in month 4.\n\nHere's exactly what we changed — and why most founders fix the wrong thing first 🧵`,
+    linkedin: `Our MRR grew 40% this quarter. Not because we landed one big client, but because I stopped hiring senior VPs too early.\n\nHere's the counterintuitive lesson six months of hiring mistakes taught me...`,
+    twitter: `1/ We almost ran out of runway in month 4.\n\nHere's exactly what we changed, and why most founders fix the wrong thing first 🧵`,
     newsletter: `This month: the growth metric I stopped tracking (and the one that actually predicts churn six weeks out).`,
   },
   corporate: {
     linkedin: `Great product strategy isn't about saying yes to more features.\n\nIt's about the roadmap items you have the discipline to kill. Here's how we decide what doesn't ship.`,
     twitter: `1/ Most "AI strategy" decks are the same 12 slides with a different logo.\n\nHere's what actually separates the teams shipping real outcomes 🧵`,
-    newsletter: `This quarter: why your best engineers are quietly disengaging — and the org design fix nobody's talking about.`,
+    newsletter: `This quarter: why your best engineers are quietly disengaging, and the org design fix nobody's talking about.`,
   },
 }
 
@@ -42,7 +42,7 @@ export default function Hero() {
           <p className="mt-5 text-lg text-gray-500 max-w-xl mx-auto lg:mx-0">
             Stop wasting hours trying to prompt generic AI tools. Give us 2 minutes of your
             voice to map your unique Brand DNA. Vowwl builds your personalized content
-            engine — mapping out ideas and writing high-impact posts that look, feel, and
+            engine, mapping out ideas and writing high-impact posts that look, feel, and
             sound authentic to you.
           </p>
 

@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { cn } from '@/lib/utils'
-import { Plus, X, Pencil, Shield, BookOpen } from 'lucide-react'
+import { Plus, X, Pencil, Shield, BookOpen, ArrowLeft } from 'lucide-react'
 import type { OnboardingData } from '@/lib/types'
 
 // ─── Types ──────────────────────────────────────────────────────
@@ -241,6 +242,15 @@ export default function DNAPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-8">
+
+      {/* Back to dashboard */}
+      <Link
+        href="/dashboard"
+        className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors mb-4"
+      >
+        <ArrowLeft className="w-3.5 h-3.5" />
+        Back to dashboard
+      </Link>
 
       {/* Page header */}
       <div className="mb-8 flex items-start justify-between">

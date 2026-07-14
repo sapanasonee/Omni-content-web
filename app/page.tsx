@@ -4,11 +4,11 @@ import Hero from '@/components/marketing/Hero'
 const FEATURES = [
   {
     title: 'Voice-first onboarding',
-    body: 'Talk for 90 seconds about what you believe. Vowwl builds your brand profile from it — no forms-first friction.',
+    body: 'Talk for 90 seconds about what you believe. Vowwl builds your brand profile from it, no forms-first friction.',
   },
   {
     title: 'Trending in your niche',
-    body: 'Five current topics a day, filtered through your audience and beat — each with an angle you can make yours. No more blank page.',
+    body: 'Five current topics a day, filtered through your audience and beat. Each comes with an angle you can make yours. No more blank page.',
   },
   {
     title: 'A voice check on every draft',
@@ -37,7 +37,7 @@ const STEPS = [
   {
     n: '2',
     title: 'Get three drafts instantly',
-    body: 'Before onboarding even ends, your first three pieces are waiting — grounded in what you just said, in your voice.',
+    body: 'Before onboarding even ends, your first three pieces are waiting, grounded in what you just said, in your voice.',
   },
   {
     n: '3',
@@ -91,7 +91,7 @@ export default function Home() {
             Every AI writing tool can produce content.
             <br />
             <span className="text-[#534AB7]">
-              Vowwl is built to produce <em>you</em> —
+              Vowwl is built to produce <em>you</em>:
             </span>{' '}
             your openers, your convictions, your rules about what never to say.
           </p>
