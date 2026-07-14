@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Hero from '@/components/marketing/Hero'
 
 const FEATURES = [
   {
@@ -63,79 +64,7 @@ export default function Home() {
         </Link>
       </nav>
 
-      {/* Hero */}
-      <header className="max-w-6xl mx-auto px-6 pt-20 pb-16">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
-          <div className="text-center lg:text-left">
-            <p className="text-xs font-mono font-semibold text-[#534AB7] uppercase tracking-widest mb-4">
-              For founders who&apos;d rather talk than type
-            </p>
-            <h1 className="text-4xl sm:text-5xl font-bold tracking-tight leading-tight">
-              Sound like you,<br />not a robot.
-            </h1>
-            <p className="mt-5 text-lg text-gray-500 max-w-xl mx-auto lg:mx-0">
-              Talk for 90 seconds about what you believe. Vowwl turns it into a LinkedIn
-              post, a tweet or a newsletter that sounds like you — and learns your voice
-              from every edit you make.
-            </p>
-            <div className="mt-8 flex items-center justify-center lg:justify-start gap-4">
-              <Link
-                href="/login"
-                className="px-6 py-3 bg-[#534AB7] text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity"
-              >
-                Start free →
-              </Link>
-            </div>
-            <p className="mt-3 text-xs text-gray-400">
-              Magic-link sign in · 30 free pieces a month · no credit card
-            </p>
-            <p className="mt-4 text-sm text-gray-500">
-              Want a personal walkthrough instead?{' '}
-              <a
-                href="mailto:sonisapna45@gmail.com?subject=Vowwl%20walkthrough"
-                className="text-[#534AB7] font-medium hover:opacity-80 transition-opacity underline underline-offset-2"
-              >
-                Book time with me
-              </a>
-            </p>
-          </div>
-
-          {/* Spoken -> published demo: shows what/for whom/why at a glance */}
-          <div>
-            <div className="bg-white border border-gray-200 rounded-2xl p-5">
-              <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-wide text-gray-400 mb-3">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#534AB7]" />
-                <span className="text-[#534AB7] font-semibold">What you said</span>
-                <span className="ml-auto">0:47</span>
-              </div>
-              <p className="text-sm text-gray-500 leading-relaxed">
-                &ldquo;okay so nobody tells you this about your first sales hire — everyone
-                thinks you&apos;re hiring a closer? you&apos;re really not. you&apos;re hiring
-                someone to figure out if the thing even sells, whether the pitch lands…&rdquo;
-              </p>
-            </div>
-
-            <div className="flex justify-center py-3" aria-hidden="true">
-              <div className="w-px h-8 bg-gray-200 relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-mono uppercase tracking-widest text-[#534AB7] whitespace-nowrap">
-                  in your voice
-                </span>
-              </div>
-            </div>
-
-            <div className="bg-white border border-gray-300 rounded-2xl p-5 shadow-md shadow-gray-100">
-              <div className="text-[11px] font-mono uppercase tracking-wide text-gray-400 mb-3">
-                Vowwl · LinkedIn draft
-              </div>
-              <p className="text-sm text-gray-800 leading-relaxed">
-                Nobody warns you about your first sales hire. You think you&apos;re hiring a
-                closer. You&apos;re not. You&apos;re hiring someone to find out whether the
-                thing actually sells — and where the pitch doesn&apos;t land.
-              </p>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Hero />
 
       {/* How it works */}
       <section className="max-w-5xl mx-auto px-6 py-16 border-t border-gray-100">
