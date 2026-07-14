@@ -88,7 +88,9 @@ export default function Hero() {
           <p className="mt-4 text-sm text-gray-500 text-center lg:text-left">
             Want a personal walkthrough instead?{' '}
             <a
-              href="mailto:sonisapna45@gmail.com?subject=Vowwl%20walkthrough"
+              href="https://calendly.com/sonisapna45/30min"
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-[#534AB7] font-medium hover:opacity-80 transition-opacity underline underline-offset-2"
             >
               Book time with me
