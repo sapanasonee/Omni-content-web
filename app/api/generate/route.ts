@@ -269,7 +269,53 @@ Output only the final content — no preamble, no labels, just the content itsel
       return NextResponse.json({ error: 'Invalid input mode' }, { status: 400 })
     }
 
-    // 7. Generate with Vertex AI streaming
+    // 7. Reserve quota BEFORE spending tokens (reserve-then-spend).
+    //
+    // Previously the RPC increment ran AFTER generateContentStream had already
+    // started, un-awaited, with its "limit_reached" result merely logged. That
+    // had two holes:
+    //   - Concurrency bypass: N parallel requests all pass the stale pre-check
+    //     in step 4, all start Gemini streams, and all deliver content — the
+    //     atomic RPC would detect the race but nothing acted on it. The cap
+    //     was advisory, not enforced.
+    //   - Lost increments: a fire-and-forget promise in a serverless runtime
+    //     can be dropped when the instance is reclaimed, silently making
+    //     generation free.
+    // Reserving first and awaiting the result closes both: the RPC's row-level
+    // atomicity is now the actual gate, and the earlier read-based pre-check
+    // (step 4) remains only as a cheap fast-fail that avoids building prompts
+    // for obviously-over-limit callers.
+    //
+    // Trade-off accepted: if the Gemini call fails after a successful reserve,
+    // the user burns one credit on a failed generation. That is strictly
+    // better than the reverse (spend-then-count), where an attacker aims the
+    // failure/race at the counter and burns OUR tokens without limit.
+    //
+    // Activation drafts (onboarding's first three) stay quota-exempt — but the
+    // exemption is recomputed server-side from generations_used < 3, so the
+    // client-supplied `activation` flag can't be replayed later for free
+    // generations.
+    const isActivation = activation === true && (workspace.generations_used ?? 0) < 3
+    if (!isActivation) {
+      const { data: quota, error: quotaError } = await supabase
+        .rpc('increment_generation_count', { p_workspace_id: workspace_id })
+
+      if (quota && quota.success === false && quota.reason === 'limit_reached') {
+        return NextResponse.json({
+          error: 'Monthly generation limit reached. Upgrade to Studio for more.'
+        }, { status: 402 })
+      }
+      // Transport-level RPC failure fails OPEN, deliberately: the read-based
+      // pre-check already passed, and the project convention is that
+      // infrastructure hiccups degrade gracefully rather than block the
+      // user-facing flow. The abuse case (hammering until the RPC errors) is
+      // bounded by the pre-check catching up on the next request.
+      if (quotaError) {
+        console.error('Quota increment failed (failing open, pre-check passed):', quotaError)
+      }
+    }
+
+    // 8. Generate with Vertex AI streaming — only after quota is reserved.
     const requestBody: GenerateContentRequest = {
       systemInstruction: {
         role: 'system',
@@ -284,19 +330,6 @@ Output only the final content — no preamble, no labels, just the content itsel
     const model = getModel()
     const streamingResult = await model.generateContentStream(requestBody)
 
-  // 8. Atomically increment generation count (RPC enforces limit under concurrency).
-  // Activation drafts (onboarding's first three) are quota-exempt — but only
-  // while the workspace is brand new, so the flag can't be abused later.
-  const isActivation = activation === true && (workspace.generations_used || 0) < 3
-  if (!isActivation) {
-    supabase
-      .rpc('increment_generation_count', { p_workspace_id: workspace_id })
-      .then(({ data }) => {
-        if (data && !data.success && data.reason === 'limit_reached') {
-          console.warn(`Limit race detected for workspace ${workspace_id}`)
-        }
-      })
-  }
   // 9. Stream response, save draft, return content_piece_id via meta chunk
     const fullText: string[] = []
     const encoder = new TextEncoder()

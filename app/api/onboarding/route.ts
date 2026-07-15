@@ -38,7 +38,34 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // 4. Create workspace in Supabase
+    // 4. Cap workspaces per account before creating another one.
+    //
+    // The generation quota (30/month on solo) is tracked PER WORKSPACE, and
+    // this route would happily create a fresh workspace on every call — so an
+    // authenticated user could mint unlimited workspaces and with them
+    // unlimited free generations (plus 3 quota-exempt activation drafts
+    // each). The cap turns that from "unlimited" into "bounded and small".
+    //
+    // Why 3 and not 1: re-running onboarding is a legitimate flow (the user
+    // may want a fresh profile after a pivot, and existing test accounts have
+    // done exactly that), and /api/me already resolves to the most recent
+    // workspace, so older ones are inert rather than harmful. 3 keeps the
+    // abuse ceiling at ~90 generations/month per account while never blocking
+    // a real founder redoing setup. Raise it deliberately if multi-workspace
+    // ever becomes a product feature — don't remove the check.
+    const MAX_WORKSPACES_PER_USER = 3
+    const { count: workspaceCount } = await supabase
+      .from('workspaces')
+      .select('id', { count: 'exact', head: true })
+      .eq('owner_id', user.id)
+
+    if ((workspaceCount ?? 0) >= MAX_WORKSPACES_PER_USER) {
+      return NextResponse.json({
+        error: 'Workspace limit reached for this account. Contact support if you need a reset.'
+      }, { status: 403 })
+    }
+
+    // 5. Create workspace in Supabase
     const workspaceName = `${data.identity.full_name}'s Workspace`
     const { data: workspace, error: workspaceError } = await supabase
       .from('workspaces')
@@ -55,7 +82,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Failed to create workspace' }, { status: 500 })
     }
 
-    // 5. Create default persona in Supabase
+    // 6. Create default persona in Supabase
     const { data: persona, error: personaError } = await supabase
       .from('personas')
       .insert({
@@ -73,7 +100,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Failed to create persona' }, { status: 500 })
     }
 
-    // 6. Build brand DNA JSON
+    // 7. Build brand DNA JSON
     const brandDNA: BrandDNA = {
       schema_version: '1.0',
       workspace_id: workspace.id,
@@ -82,7 +109,7 @@ export async function POST(request: Request) {
       sections: data,
     }
 
-    // 7. Save to GCS
+    // 8. Save to GCS
     const gcsPath = `workspaces/${workspace.id}/personas/${persona.id}/brand_dna.json`
     const bucket = getBucket()
     const file = bucket.file(gcsPath)
@@ -94,7 +121,7 @@ export async function POST(request: Request) {
       },
     })
 
-    // 8. Return success
+    // 9. Return success
     return NextResponse.json({
       success: true,
       workspace_id: workspace.id,
