@@ -3,6 +3,7 @@ import { Storage } from '@google-cloud/storage'
 import { NextResponse } from 'next/server'
 import type { BrandDNA } from '@/lib/types'
 import { normalizeSections } from '@/lib/brand-dna-schema'
+import { evaluateSignupEmail, isExemptExistingAccount } from '@/lib/signup-policy'
 
 function getBucket() {
   const storage = new Storage({ projectId: process.env.GCP_PROJECT_ID })
@@ -16,6 +17,23 @@ export async function POST(request: Request) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // 1b. Signup email policy — the authoritative gate for the early-access
+    //     offer. This endpoint is where a bare auth user becomes a real
+    //     account (workspace + free generation quota + 3 quota-exempt
+    //     activation drafts), so it's the right choke point: blocking here
+    //     means a disposable-inbox signup can never reach anything that
+    //     costs money, while the magic-link auth user it created remains an
+    //     inert row. Accounts created before the policy cutoff are exempt
+    //     unconditionally (pre-existing testing accounts) — see
+    //     lib/signup-policy.ts for the full reasoning and the fail-safe
+    //     direction of the exemption.
+    if (!isExemptExistingAccount(user.created_at)) {
+      const verdict = evaluateSignupEmail(user.email || '')
+      if (!verdict.allowed) {
+        return NextResponse.json({ error: verdict.reason }, { status: 403 })
+      }
     }
 
     // 2/3. Parse AND normalize the request body. This route is the primary

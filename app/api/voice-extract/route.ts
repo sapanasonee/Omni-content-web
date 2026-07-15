@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { VertexAI } from '@google-cloud/vertexai'
 import { NextResponse } from 'next/server'
+import { evaluateSignupEmail, isExemptExistingAccount } from '@/lib/signup-policy'
 
 // Turns a spoken onboarding answer into Brand DNA field values.
 // Speech tells the system ABOUT the founder (identity, beliefs, topics) —
@@ -49,6 +50,18 @@ export async function POST(request: Request) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Signup email policy gate. Voice extraction runs BEFORE any workspace
+    // exists and costs a real Gemini audio call per request, which makes it
+    // the one endpoint a gated signup could still use to burn spend if we
+    // only enforced at /api/onboarding. Same policy, same exemption for
+    // pre-cutoff accounts — see lib/signup-policy.ts.
+    if (!isExemptExistingAccount(user.created_at)) {
+      const verdict = evaluateSignupEmail(user.email || '')
+      if (!verdict.allowed) {
+        return NextResponse.json({ error: verdict.reason }, { status: 403 })
+      }
     }
 
     const { audio, mime_type } = await request.json()

@@ -21,6 +21,18 @@ function LoginForm() {
     e.preventDefault()
     setLoading(true)
     setError(null)
+
+    // Deliberately NO signup-policy check here, even though this form is the
+    // visual front door for signups: login and signup share this one
+    // magic-link flow, and the client cannot know an account's creation date
+    // before sign-in — so a domain check here would also lock out
+    // grandfathered pre-policy accounts (the owner's testing accounts), which
+    // must never be blocked. The policy is enforced server-side at
+    // /api/onboarding and /api/voice-extract (see lib/signup-policy.ts),
+    // where the creation-date exemption CAN be evaluated. A disallowed new
+    // signup therefore gets an inert auth session that can't create a
+    // workspace or spend anything, and sees the policy message the moment it
+    // tries.
     const supabase = createClient()
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email,
