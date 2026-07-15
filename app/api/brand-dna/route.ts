@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Storage } from '@google-cloud/storage'
 import { NextResponse } from 'next/server'
 import type { BrandDNA, OnboardingData } from '@/lib/types'
+import { requireWorkspaceOwnership, requirePersonaInWorkspace } from '@/lib/auth-guard'
 
 // Brand DNA lives in GCS (brand_dna.json) — the copy generation actually reads.
 // This route is the single editing surface for it. (personas.brand_dna in
@@ -14,20 +15,6 @@ function getBucket() {
 
 function dnaPath(workspace_id: string, persona_id: string) {
   return `workspaces/${workspace_id}/personas/${persona_id}/brand_dna.json`
-}
-
-async function verifyPersona(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  workspace_id: string,
-  persona_id: string,
-) {
-  const { data: persona } = await supabase
-    .from('personas')
-    .select('id, display_name')
-    .eq('id', persona_id)
-    .eq('workspace_id', workspace_id)
-    .single()
-  return persona
 }
 
 // GET: read brand DNA for a persona
@@ -47,10 +34,21 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Missing workspace_id or persona_id' }, { status: 400 })
     }
 
-    const persona = await verifyPersona(supabase, workspace_id, persona_id)
-    if (!persona) {
-      return NextResponse.json({ error: 'Persona not found' }, { status: 404 })
-    }
+    // Ownership guard before the GCS read. This route hands back the entire
+    // Brand DNA file — the most sensitive artifact per tenant — and GCS has no
+    // row-level security of its own, so the *only* thing standing between a
+    // caller and another tenant's DNA is this check. The old verifyPersona
+    // relied purely on RLS visibility; the guard adds the explicit
+    // owner_id assertion plus UUID-shape validation of both IDs before they
+    // are interpolated into the GCS object path.
+    const wsGuard = await requireWorkspaceOwnership(supabase, user.id, workspace_id)
+    if (wsGuard.failure) return wsGuard.failure
+
+    const personaGuard = await requirePersonaInWorkspace<{ id: string; display_name: string | null }>(
+      supabase, workspace_id, persona_id, 'id, display_name',
+    )
+    if (personaGuard.failure) return personaGuard.failure
+    const persona = personaGuard.persona
 
     let sections: OnboardingData | null = null
     try {
@@ -140,10 +138,16 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Name, role and industry are required' }, { status: 400 })
     }
 
-    const persona = await verifyPersona(supabase, workspace_id, persona_id)
-    if (!persona) {
-      return NextResponse.json({ error: 'Persona not found' }, { status: 404 })
-    }
+    // Ownership guard before the GCS write. PUT is even more dangerous than
+    // GET: overwriting brand_dna.json poisons every future generation for the
+    // targeted persona (generation, critic, and topics all read this file).
+    // Guard runs before any storage access so unowned IDs can never reach the
+    // GCS path template.
+    const wsGuard = await requireWorkspaceOwnership(supabase, user.id, workspace_id)
+    if (wsGuard.failure) return wsGuard.failure
+
+    const personaGuard = await requirePersonaInWorkspace(supabase, workspace_id, persona_id)
+    if (personaGuard.failure) return personaGuard.failure
 
     // Preserve the envelope of the existing file where present.
     const file = getBucket().file(dnaPath(workspace_id, persona_id))

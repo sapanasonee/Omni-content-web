@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { requireWorkspaceOwnership, requirePersonaInWorkspace, isUuid } from '@/lib/auth-guard'
 
 // ─── GET: list contexts for a persona ────────────────────────
 // Query params: workspace_id, persona_id (required); scope, status (optional filters)
@@ -20,6 +21,16 @@ export async function GET(request: Request) {
     if (!workspace_id || !persona_id) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
+
+    // Ownership guard: contexts contain the user's standing rules and campaign
+    // briefs — competitive/strategic material. Listing previously relied on RLS
+    // alone; the guard adds the explicit owner check so a policy gap on the
+    // contexts table can't turn this into a cross-tenant read.
+    const wsGuard = await requireWorkspaceOwnership(supabase, user.id, workspace_id)
+    if (wsGuard.failure) return wsGuard.failure
+
+    const personaGuard = await requirePersonaInWorkspace(supabase, workspace_id, persona_id)
+    if (personaGuard.failure) return personaGuard.failure
 
     let query = supabase
       .from('contexts')
@@ -69,6 +80,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid tier' }, { status: 400 })
     }
 
+    // Ownership guard before insert. The persona check matters doubly here:
+    // this route previously never verified persona-belongs-to-workspace at
+    // all, so a caller could attach a rule to an arbitrary persona_id. Since
+    // generation loads permanent contexts BY persona_id ONLY (not workspace),
+    // an unchecked insert here was a potential injection point into another
+    // persona's prompts — the guard closes that path in code regardless of
+    // what RLS does.
+    const wsGuard = await requireWorkspaceOwnership(supabase, user.id, workspace_id)
+    if (wsGuard.failure) return wsGuard.failure
+
+    const personaGuard = await requirePersonaInWorkspace(supabase, workspace_id, persona_id)
+    if (personaGuard.failure) return personaGuard.failure
+
     const { data, error } = await supabase
       .from('contexts')
       .insert({
@@ -107,6 +131,17 @@ export async function PATCH(request: Request) {
 
     if (!id || !workspace_id) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+
+    // Ownership guard before update. Updating a context can flip a rule to
+    // hard_rule (never overridable in prompts) or resurrect a closed one, so
+    // writes must be pinned to the caller's own workspace in code, not just
+    // by RLS. The context id itself is UUID-checked to keep garbage out of
+    // the query (and out of the logs as 22P02 noise).
+    const wsGuard = await requireWorkspaceOwnership(supabase, user.id, workspace_id)
+    if (wsGuard.failure) return wsGuard.failure
+    if (!isUuid(id)) {
+      return NextResponse.json({ error: 'Context not found or update failed' }, { status: 404 })
     }
 
     // Build the update object from only the fields provided

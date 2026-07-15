@@ -9,6 +9,12 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // No auth-guard call needed here, and that's deliberate: this route takes
+    // NO client-supplied IDs — it resolves the workspace FROM the
+    // authenticated user via owner_id, which is exactly the invariant the
+    // guard exists to enforce elsewhere. If this query is ever changed to
+    // accept a workspace_id parameter, it must adopt requireWorkspaceOwnership
+    // like every other route.
     const { data: workspace } = await supabase
       .from('workspaces')
       .select('*')

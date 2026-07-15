@@ -3,6 +3,7 @@ import { Storage } from '@google-cloud/storage'
 import { VertexAI, type Tool } from '@google-cloud/vertexai'
 import { NextResponse } from 'next/server'
 import type { BrandDNA, TrendingTopic } from '@/lib/types'
+import { requireWorkspaceOwnership, requirePersonaInWorkspace } from '@/lib/auth-guard'
 
 // Topics go stale slowly; grounded calls are the most expensive call type in the
 // app. One generation per persona per day, everything else served from cache.
@@ -86,28 +87,16 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // 3. Ownership checks — same pattern as generate: workspace via RLS,
-    //    then persona-belongs-to-workspace.
-    const { data: workspace } = await supabase
-      .from('workspaces')
-      .select('id')
-      .eq('id', workspace_id)
-      .single()
+    // 3. Ownership guard — same shared guard as generate. Beyond tenant
+    //    isolation (this route reads the Brand DNA file from GCS to build its
+    //    prompt), topics is the most expensive call type in the app (grounded
+    //    Gemini), so it must never be triggerable against IDs the caller
+    //    doesn't own even if RLS would have let the lookups pass.
+    const wsGuard = await requireWorkspaceOwnership(supabase, user.id, workspace_id)
+    if (wsGuard.failure) return wsGuard.failure
 
-    if (!workspace) {
-      return NextResponse.json({ error: 'Workspace not found' }, { status: 404 })
-    }
-
-    const { data: persona } = await supabase
-      .from('personas')
-      .select('id')
-      .eq('id', persona_id)
-      .eq('workspace_id', workspace_id)
-      .single()
-
-    if (!persona) {
-      return NextResponse.json({ error: 'Persona not found in this workspace' }, { status: 404 })
-    }
+    const personaGuard = await requirePersonaInWorkspace(supabase, workspace_id, persona_id)
+    if (personaGuard.failure) return personaGuard.failure
 
     // 4. Serve from cache when fresh. Cache failures are never fatal — the
     //    feature degrades to a live call, not an error.

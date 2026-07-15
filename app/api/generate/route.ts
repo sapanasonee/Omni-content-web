@@ -4,6 +4,7 @@ import { VertexAI, type GenerateContentRequest } from '@google-cloud/vertexai'
 import { NextResponse } from 'next/server'
 import type { BrandDNA, ContentFormat } from '@/lib/types'
 import { runLinter, runLLMCritic, reviseDraft } from '@/lib/critic'
+import { requireWorkspaceOwnership, requirePersonaInWorkspace, isUuid } from '@/lib/auth-guard'
 
 const FORMAT_INSTRUCTIONS: Record<ContentFormat, string> = {
   linkedin: 'LinkedIn post. Max 1300 characters. Short paragraphs. Max 4 hashtags at the end only. Start with a hook. End with insight or question.',
@@ -123,32 +124,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // 3. Verify workspace ownership, then persona-belongs-to-workspace.
-    //    Two simple queries instead of one embedded join — avoids PostgREST
-    //    relationship ambiguity (workspaces<->personas now has multiple FK paths
-    //    via trending_cache). RLS still enforces ownership on both.
-    const { data: workspace, error: workspaceError } = await supabase
-      .from('workspaces')
-      .select('*')
-      .eq('id', workspace_id)
-      .single()
+    // 3. Verify workspace ownership, then persona-belongs-to-workspace, via the
+    //    shared guard. Previously this was a bare existence lookup that leaned
+    //    entirely on RLS for isolation; the guard pins `owner_id = user.id` in
+    //    the query itself so a dropped/permissive RLS policy can no longer
+    //    expose a foreign workspace to this route. This is the route that spends
+    //    Gemini tokens and writes content rows, so it gets the guard first.
+    const wsGuard = await requireWorkspaceOwnership(supabase, user.id, workspace_id)
+    if (wsGuard.failure) return wsGuard.failure
+    const workspace = wsGuard.workspace
 
-    if (workspaceError || !workspace) {
-      return NextResponse.json({ error: 'Workspace not found' }, { status: 404 })
-    }
-
-    const { data: persona, error: personaError } = await supabase
-      .from('personas')
-      .select('id')
-      .eq('id', persona_id)
-      .eq('workspace_id', workspace_id)
-      .single()
-
-    if (personaError || !persona) {
-      return NextResponse.json({ error: 'Persona not found in this workspace' }, { status: 404 })
-    }
-    // 4. Pre-check limit (RPC enforces strictly under concurrency)
-    if (workspace.plan_tier === 'solo' && workspace.generations_used >= 30) {
+    const personaGuard = await requirePersonaInWorkspace(supabase, workspace_id, persona_id)
+    if (personaGuard.failure) return personaGuard.failure
+    // 4. Pre-check limit (RPC enforces strictly under concurrency).
+    //    generations_used is typed nullable now that the guard returns a narrow
+    //    projection — coalesce to 0 so a legacy row with a NULL counter fails
+    //    open to "under the limit" rather than crashing the type check.
+    if (workspace.plan_tier === 'solo' && (workspace.generations_used ?? 0) >= 30) {
       return NextResponse.json({
         error: 'Monthly generation limit reached. Upgrade to Studio for more.'
       }, { status: 402 })
@@ -182,6 +174,14 @@ export async function POST(request: Request) {
     const defaults = (permanentContexts || []).filter(c => c.tier !== 'hard_rule')
 
     let campaignContext: { id: string; name: string | null; content: string } | null = null
+    // Reject malformed campaign IDs loudly instead of letting the uuid-cast
+    // error inside PostgREST silently null the campaign out — a user who
+    // *meant* to generate inside a campaign should never get a silent
+    // campaign-less generation (it would also be saved and RAG-ranked as if
+    // standalone, corrupting later retrieval).
+    if (campaign_context_id && !isUuid(campaign_context_id)) {
+      return NextResponse.json({ error: 'Invalid campaign_context_id' }, { status: 400 })
+    }
     if (campaign_context_id) {
       const { data: cc } = await supabase
         .from('contexts')

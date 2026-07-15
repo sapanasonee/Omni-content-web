@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { requireWorkspaceOwnership, requirePersonaInWorkspace } from '@/lib/auth-guard'
 
 export async function GET(request: Request) {
   try {
@@ -18,6 +19,23 @@ export async function GET(request: Request) {
 
     if (!workspace_id) {
       return NextResponse.json({ error: 'Missing workspace_id' }, { status: 400 })
+    }
+
+    // Ownership guard: this endpoint returns full content_pieces rows —
+    // drafts and approved posts are exactly the user data a cross-tenant read
+    // would exfiltrate. Previously the workspace_id filter was the only
+    // scoping besides RLS; the guard makes the owner check explicit so a
+    // content_pieces policy gap alone can't expose another tenant's library.
+    const wsGuard = await requireWorkspaceOwnership(supabase, user.id, workspace_id)
+    if (wsGuard.failure) return wsGuard.failure
+
+    // persona_id is an optional filter here, but when present it must still
+    // be pinned to the guarded workspace — otherwise it silently no-ops for
+    // foreign personas, and consistency with the other routes keeps the
+    // mental model simple: any persona_id a route accepts is verified.
+    if (persona_id) {
+      const personaGuard = await requirePersonaInWorkspace(supabase, workspace_id, persona_id)
+      if (personaGuard.failure) return personaGuard.failure
     }
 
     let query = supabase

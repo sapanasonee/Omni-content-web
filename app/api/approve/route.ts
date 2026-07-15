@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import { DocumentServiceClient } from '@google-cloud/discoveryengine'
 import { runLinter } from '@/lib/critic'
 import { analyzeEdit, type EditDelta } from '@/lib/rulebook'
+import { requireWorkspaceOwnership, requirePersonaInWorkspace } from '@/lib/auth-guard'
 
 const DATASTORE_ID = 'omni-content-agent-v2_1780394823768'
 const PROJECT_NUMBER = '441385652994'
@@ -34,7 +35,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // 3. Load content piece from Supabase
+    // 3. Ownership guard BEFORE any data is loaded. Approve has the widest
+    //    blast radius of any route — it writes to GCS (no row-level security
+    //    there), mutates persona rag counts, and feeds the rulebook — so it
+    //    must never proceed past this point on IDs the caller doesn't own,
+    //    even if an RLS policy regression would have let the lookups succeed.
+    const wsGuard = await requireWorkspaceOwnership(supabase, user.id, workspace_id)
+    if (wsGuard.failure) return wsGuard.failure
+    const workspace = wsGuard.workspace
+
+    const personaGuard = await requirePersonaInWorkspace<{ id: string; active_rag_count: number | null }>(
+      supabase, workspace_id, persona_id, 'id, active_rag_count',
+    )
+    if (personaGuard.failure) return personaGuard.failure
+    const persona = personaGuard.persona
+
+    // 4. Load content piece from Supabase
     const { data: piece, error: pieceError } = await supabase
       .from('content_pieces')
       .select('*')
@@ -46,11 +62,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Content piece not found' }, { status: 404 })
     }
 
+    // The piece must actually belong to the persona the caller named. Without
+    // this check a caller could approve a piece under a *different* persona in
+    // the same workspace, which would write the GCS approved-content file under
+    // the wrong persona's path, bump the wrong persona's rag count, and feed
+    // the wrong persona's rulebook history — silent cross-persona data
+    // corruption that RAG retrieval would then learn from.
+    if (piece.persona_id !== persona_id) {
+      return NextResponse.json({ error: 'Content piece does not belong to this persona' }, { status: 400 })
+    }
+
     if (piece.status === 'approved') {
       return NextResponse.json({ error: 'Content already approved' }, { status: 400 })
     }
 
-    // 4. Final linter gate (the LLM critique already ran at generation time;
+    // 5. Final linter gate (the LLM critique already ran at generation time;
     //    this re-checks because the body may have been edited since)
     const violations = runLinter(piece.body)
     if (violations.length > 0 && !confirmed) {
@@ -61,29 +87,8 @@ export async function POST(request: Request) {
       }, { status: 200 })
     }
 
-    // 5. Load persona
-    const { data: persona, error: personaError } = await supabase
-      .from('personas')
-      .select('*')
-      .eq('id', persona_id)
-      .eq('workspace_id', workspace_id)
-      .single()
-
-    if (personaError || !persona) {
-      return NextResponse.json({ error: 'Persona not found' }, { status: 404 })
-    }
-
-    // 6. Load workspace
-    const { data: workspace, error: workspaceError } = await supabase
-      .from('workspaces')
-      .select('*')
-      .eq('id', workspace_id)
-      .single()
-
-    if (workspaceError || !workspace) {
-      return NextResponse.json({ error: 'Workspace not found' }, { status: 404 })
-    }
-
+    // 6. Persona and workspace rows come from the ownership guards above —
+    //    the guard's narrow projections replace the old select('*') loads.
     const isSolo = workspace.plan_tier === 'solo'
     let archivedId: string | null = null
 
