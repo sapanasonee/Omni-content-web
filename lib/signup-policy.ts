@@ -45,11 +45,15 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Accounts created before this instant are exempt from the domain policy.
-// Set to the day after the policy was written so every pre-existing testing
-// account is safely inside the window. If deployment slips past this date,
-// move the cutoff forward BEFORE deploying — a gated "existing" account is a
-// policy bug, the failure mode we must never have.
-export const SIGNUP_POLICY_CUTOFF = '2026-07-16T00:00:00Z'
+// Set a few days past when the policy was written (2026-07-15) so the
+// branch-review window is covered: every pre-existing testing account AND
+// any account created while exercising this branch before merge stays
+// safely grandfathered. If deployment slips past this date, move the cutoff
+// forward BEFORE deploying — a gated "existing" account is a policy bug,
+// the failure mode we must never have. (The flip side: until this date,
+// disposable-domain signups are also exempt, so don't publicize the offer
+// before the cutoff has passed or been tightened.)
+export const SIGNUP_POLICY_CUTOFF = '2026-07-20T00:00:00Z'
 
 // Major personal providers, explicitly welcome ("standard personal emails,
 // like official Gmail IDs"). Kept as data (not logic) so product can review
