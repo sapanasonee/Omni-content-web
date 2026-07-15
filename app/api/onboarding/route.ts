@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { Storage } from '@google-cloud/storage'
 import { NextResponse } from 'next/server'
-import type { OnboardingData, BrandDNA } from '@/lib/types'
+import type { BrandDNA } from '@/lib/types'
+import { normalizeSections } from '@/lib/brand-dna-schema'
 
 function getBucket() {
   const storage = new Storage({ projectId: process.env.GCP_PROJECT_ID })
@@ -17,11 +18,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // 2. Parse request body
-    const data: OnboardingData = await request.json()
-
-    // 3. Validate required fields
-    if (!data.identity.full_name || !data.identity.role || !data.identity.industry) {
+    // 2/3. Parse AND normalize the request body. This route is the primary
+    //    creator of brand_dna.json, and it previously wrote the raw parsed
+    //    JSON to GCS verbatim (`const data: OnboardingData = await
+    //    request.json()` — a type assertion, not a runtime check). That left
+    //    the primary write path LESS defended than the secondary /dna editing
+    //    surface, which already normalized. Consequences of a malformed file:
+    //    every generation prompt dereferences nested DNA fields without
+    //    guards, so a missing `audience.segments` array 500s all generation
+    //    for the persona — and since /dna also can't render a malformed file,
+    //    the account is wedged with no self-service fix. Normalizing here
+    //    (same shared allowlist coercion the PUT path uses) makes a
+    //    well-shaped file a structural invariant of the system rather than a
+    //    hope about client behavior. The old direct property access
+    //    (`data.identity.full_name`) also threw on absent `identity`,
+    //    turning bad requests into opaque 500s instead of 400s.
+    const data = normalizeSections(await request.json())
+    if (!data) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 

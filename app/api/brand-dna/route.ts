@@ -3,6 +3,7 @@ import { Storage } from '@google-cloud/storage'
 import { NextResponse } from 'next/server'
 import type { BrandDNA, OnboardingData } from '@/lib/types'
 import { requireWorkspaceOwnership, requirePersonaInWorkspace } from '@/lib/auth-guard'
+import { normalizeSections } from '@/lib/brand-dna-schema'
 
 // Brand DNA lives in GCS (brand_dna.json) — the copy generation actually reads.
 // This route is the single editing surface for it. (personas.brand_dna in
@@ -69,55 +70,10 @@ export async function GET(request: Request) {
   }
 }
 
-// Coerce client-sent sections into a clean OnboardingData shape so a buggy or
-// malicious client can't write arbitrary structure into the DNA file the
-// generation prompts interpolate from.
-function normalizeSections(raw: unknown): OnboardingData | null {
-  if (!raw || typeof raw !== 'object') return null
-  const s = raw as Record<string, Record<string, unknown>> & { topics?: unknown; avoid?: unknown }
-
-  const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '')
-  const strArray = (v: unknown) =>
-    Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.trim() !== '').map(x => x.trim()) : []
-  const scale = (v: unknown) => {
-    const n = typeof v === 'number' ? Math.round(v) : 3
-    return Math.min(5, Math.max(1, n))
-  }
-
-  const sections: OnboardingData = {
-    identity: {
-      full_name: str(s.identity?.full_name),
-      role: str(s.identity?.role),
-      industry: str(s.identity?.industry),
-    },
-    audience: {
-      description: str(s.audience?.description),
-      segments: strArray(s.audience?.segments),
-    },
-    voice: {
-      description: str(s.voice?.description),
-      tones: strArray(s.voice?.tones),
-      formality: scale(s.voice?.formality),
-      pace: scale(s.voice?.pace),
-    },
-    examples: {
-      good: str(s.examples?.good),
-      bad: str(s.examples?.bad),
-    },
-    topics: strArray(s.topics),
-    voice_sample_transcript: str((s as Record<string, unknown>).voice_sample_transcript),
-    avoid: strArray(s.avoid),
-    formats: {
-      preferred: strArray(s.formats?.preferred),
-      cadence: str(s.formats?.cadence),
-    },
-  }
-
-  if (!sections.identity.full_name || !sections.identity.role || !sections.identity.industry) {
-    return null
-  }
-  return sections
-}
+// (normalizeSections moved to lib/brand-dna-schema.ts so BOTH write paths —
+// this PUT and /api/onboarding's initial create — share the exact same
+// coercion. A route-local copy invited drift: the two paths had already
+// diverged once, with onboarding writing raw client JSON to GCS.)
 
 // PUT: update brand DNA for a persona
 export async function PUT(request: Request) {
