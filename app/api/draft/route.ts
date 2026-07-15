@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { requireWorkspaceOwnership, isUuid } from '@/lib/auth-guard'
+import { INPUT_LIMITS, rejectOversized } from '@/lib/input-limits'
 
 export async function PATCH(request: Request) {
   try {
@@ -19,6 +20,12 @@ export async function PATCH(request: Request) {
     if (body.trim().length === 0) {
       return NextResponse.json({ error: 'Body cannot be empty' }, { status: 400 })
     }
+    // Cap the edited body: approve later runs the linter over it, ships it to
+    // GCS, indexes it, and injects it into RAG exemplars — all costs that
+    // scale with length. 30k chars is several times the longest legitimate
+    // format (a ~1000-word blog post), so no real edit ever hits this.
+    const oversized = rejectOversized([['body', body, INPUT_LIMITS.draft_body]])
+    if (oversized) return oversized
 
     // 3. Ownership guard before touching the piece. Draft edits feed the
     //    gold-signal pipeline (body vs original_body diff at approve time), so

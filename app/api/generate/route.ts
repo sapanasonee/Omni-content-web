@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server'
 import type { BrandDNA, ContentFormat } from '@/lib/types'
 import { runLinter, runLLMCritic, reviseDraft } from '@/lib/critic'
 import { requireWorkspaceOwnership, requirePersonaInWorkspace, isUuid } from '@/lib/auth-guard'
+import { INPUT_LIMITS, rejectOversized } from '@/lib/input-limits'
 
 const FORMAT_INSTRUCTIONS: Record<ContentFormat, string> = {
   linkedin: 'LinkedIn post. Max 1300 characters. Short paragraphs. Max 4 hashtags at the end only. Start with a hook. End with insight or question.',
@@ -123,6 +124,36 @@ export async function POST(request: Request) {
     if (!workspace_id || !persona_id || !format) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
+
+    // 2b. Enum validation. `format` was previously interpolated unchecked:
+    //     an arbitrary string meant FORMAT_INSTRUCTIONS[format] resolved to
+    //     undefined, so the prompt literally contained "FORMAT: undefined"
+    //     (garbage output billed at full price) and the bogus format string
+    //     was persisted to content_pieces, where it would poison the
+    //     same-format-first RAG ranking on every later generation.
+    if (!(format in FORMAT_INSTRUCTIONS)) {
+      return NextResponse.json({ error: 'Invalid format' }, { status: 400 })
+    }
+    if (generation_mode && !['standard', 'one_time'].includes(generation_mode)) {
+      return NextResponse.json({ error: 'Invalid generation_mode' }, { status: 400 })
+    }
+
+    // 2c. Length caps on every free-text field that reaches the prompt or the
+    //     database. Without these, a single request could carry megabytes into
+    //     the Gemini call — per-request token-cost abuse — and oversized
+    //     one_time_context/tone_override would also be persisted and re-read
+    //     forever by RAG and the rulebook. Rejected (not truncated) so the
+    //     user knows their input didn't fit rather than silently getting a
+    //     draft built from half of it. Runs before the DB-touching ownership
+    //     guards: cheapest checks first.
+    const oversized = rejectOversized([
+      ['topic', topic, INPUT_LIMITS.topic],
+      ['description', description, INPUT_LIMITS.description],
+      ['raw_input', raw_input, INPUT_LIMITS.raw_input],
+      ['tone_override', tone_override, INPUT_LIMITS.tone_override],
+      ['one_time_context', one_time_context, INPUT_LIMITS.context_content],
+    ])
+    if (oversized) return oversized
 
     // 3. Verify workspace ownership, then persona-belongs-to-workspace, via the
     //    shared guard. Previously this was a bare existence lookup that leaned

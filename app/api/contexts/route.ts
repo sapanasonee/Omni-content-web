@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { requireWorkspaceOwnership, requirePersonaInWorkspace, isUuid } from '@/lib/auth-guard'
+import { INPUT_LIMITS, rejectOversized } from '@/lib/input-limits'
 
 // ─── GET: list contexts for a persona ────────────────────────
 // Query params: workspace_id, persona_id (required); scope, status (optional filters)
@@ -80,6 +81,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid tier' }, { status: 400 })
     }
 
+    // Length caps matter more for contexts than anywhere else: every ACTIVE
+    // permanent context is interpolated into EVERY future generation, so an
+    // unbounded rule isn't a one-off cost — it's a standing per-request token
+    // tax the user (or an attacker with their session) installs once and we
+    // pay forever. Rejected, not truncated, so a half-saved rule can't
+    // silently mean something different from what was written.
+    const oversized = rejectOversized([
+      ['content', content, INPUT_LIMITS.context_content],
+      ['name', name, INPUT_LIMITS.context_name],
+    ])
+    if (oversized) return oversized
+
     // Ownership guard before insert. The persona check matters doubly here:
     // this route previously never verified persona-belongs-to-workspace at
     // all, so a caller could attach a rule to an arbitrary persona_id. Since
@@ -143,6 +156,13 @@ export async function PATCH(request: Request) {
     if (!isUuid(id)) {
       return NextResponse.json({ error: 'Context not found or update failed' }, { status: 404 })
     }
+
+    // Same standing-token-tax reasoning as POST: an edit can grow a rule just
+    // as easily as a create can, so the cap applies on both write paths.
+    const oversizedUpdate = rejectOversized([
+      ['content', content, INPUT_LIMITS.context_content],
+    ])
+    if (oversizedUpdate) return oversizedUpdate
 
     // Build the update object from only the fields provided
     const updates: Record<string, unknown> = {}

@@ -15,7 +15,15 @@ export async function GET(request: Request) {
     const persona_id = searchParams.get('persona_id')
     const status = searchParams.get('status') || 'approved'
     const format = searchParams.get('format')
-    const limit = parseInt(searchParams.get('limit') || '20')
+    // Clamp the page size: parseInt on attacker-controlled input can yield
+    // NaN (which PostgREST rejects with a noisy error) or an arbitrarily
+    // large number that turns this select('*') into a full-table dump of the
+    // workspace in one response. 100 is comfortably above what the library
+    // UI ever requests.
+    const requestedLimit = parseInt(searchParams.get('limit') || '20', 10)
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.min(Math.max(requestedLimit, 1), 100)
+      : 20
 
     if (!workspace_id) {
       return NextResponse.json({ error: 'Missing workspace_id' }, { status: 400 })
