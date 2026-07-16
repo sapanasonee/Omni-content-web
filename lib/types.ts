@@ -36,7 +36,14 @@ export interface OnboardingData {
     pace: number
   }
   examples: {
+    // Legacy single-sample field. Still populated (= good_samples[0]) so any
+    // reader written before multi-sample support keeps working; new writes and
+    // readers use good_samples.
     good: string
+    // Up to 3 "best content" samples captured in onboarding. Optional because
+    // brand_dna.json files written before this field existed only have `good` —
+    // readers must fall back via readGoodSamples() in lib/brand-dna-schema.
+    good_samples?: string[]
     bad: string
   }
   // Optional because brand_dna.json files written before this field existed

@@ -41,6 +41,9 @@ export const INPUT_LIMITS = {
   // (blog, ~1000 words ≈ 7k chars) — bounds what approve later lints,
   // stores, ships to GCS, and injects into RAG exemplars.
   draft_body: 30_000,
+  // "I don't like this one" free-text note. A sentence or two on what felt off,
+  // stored (not prompted) on the rejected piece — a paragraph is plenty.
+  feedback_note: 1_000,
 } as const
 
 // Uniform 400 for an oversized field. Field name and ceiling are included so

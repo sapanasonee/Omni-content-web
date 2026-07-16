@@ -5,7 +5,7 @@ const INITIAL_DATA: OnboardingData = {
   identity: { full_name: '', role: '', industry: '' },
   audience: { description: '', segments: [] },
   voice: { description: '', tones: [], formality: 3, pace: 3 },
-  examples: { good: '', bad: '' },
+  examples: { good: '', good_samples: [''], bad: '' },
   topics: [],
   avoid: [],
   formats: { preferred: [], cadence: '' },
@@ -39,7 +39,7 @@ export function useOnboarding() {
       )
       case 2: return data.audience.description.trim() !== ''
       case 3: return data.voice.description.trim() !== ''
-      case 4: return data.examples.good.trim() !== ''
+      case 4: return (data.examples.good_samples || []).some(s => s.trim() !== '')
       case 5: return data.avoid.length > 0
       case 6: return data.formats.preferred.length > 0 && data.formats.cadence !== ''
       default: return false

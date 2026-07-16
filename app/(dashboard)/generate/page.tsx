@@ -32,6 +32,16 @@ const FORMATS: { value: Format; label: string }[] = [
   { value: 'exec_brief', label: 'Exec Brief' },
 ]
 
+// "I don't like this one" reasons. Values are the canonical keys the
+// /api/feedback route validates against; labels are what the user sees.
+const REJECT_REASONS: { value: string; label: string }[] = [
+  { value: 'tone_mismatch', label: "Doesn't match my tone" },
+  { value: 'too_flat', label: "It's too flat" },
+  { value: 'weak_hook', label: "Didn't like the hook" },
+  { value: 'weak_structure', label: "Didn't like the structure" },
+  { value: 'weak_closing', label: "Didn't like the closing" },
+]
+
 const MODES: { value: Mode; label: string; placeholder: string }[] = [
   { value: 'brief', label: 'Brief', placeholder: 'What do you want to write about? Be specific — the more context you give, the better the output.' },
   { value: 'raw', label: 'Raw input', placeholder: 'Paste your rough notes, bullet points, or draft. The system will shape it into your voice.' },
@@ -81,6 +91,13 @@ export default function GeneratePage() {
   const [violations, setViolations] = useState<string[]>([])
   const [showViolationsModal, setShowViolationsModal] = useState(false)
   const [approveError, setApproveError] = useState<string | null>(null)
+
+  // Reject ("I don't like this one") state
+  const [showRejectPanel, setShowRejectPanel] = useState(false)
+  const [rejectReasons, setRejectReasons] = useState<string[]>([])
+  const [rejectNote, setRejectNote] = useState('')
+  const [rejecting, setRejecting] = useState(false)
+  const [rejected, setRejected] = useState(false)
 
   const currentMode = MODES.find(m => m.value === mode)!
   const selectedCampaign = campaigns.find(c => c.id === selectedCampaignId) || null
@@ -180,6 +197,10 @@ export default function GeneratePage() {
     setApproveError(null)
     setVoiceCheck(null)
     setShowVoiceCheckDetails(false)
+    setRejected(false)
+    setShowRejectPanel(false)
+    setRejectReasons([])
+    setRejectNote('')
 
     try {
       const metaRes = await fetch('/api/me')
@@ -355,6 +376,42 @@ export default function GeneratePage() {
     }
   }
 
+  // ─── Reject ("I don't like this one") ─────────────────────────
+
+  function toggleRejectReason(value: string) {
+    setRejectReasons(prev =>
+      prev.includes(value) ? prev.filter(r => r !== value) : [...prev, value]
+    )
+  }
+
+  async function submitReject() {
+    if (!contentPieceId || rejecting) return
+    setRejecting(true)
+    setApproveError(null)
+    try {
+      const meta = await (await fetch('/api/me')).json()
+      const res = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content_piece_id: contentPieceId,
+          workspace_id: meta.workspace_id,
+          persona_id: meta.persona_id,
+          reasons: rejectReasons,
+          note: rejectNote.trim(),
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Could not save your feedback')
+      setRejected(true)
+      setShowRejectPanel(false)
+    } catch (err) {
+      setApproveError(err instanceof Error ? err.message : 'Could not save your feedback')
+    } finally {
+      setRejecting(false)
+    }
+  }
+
   // ─── Copy ─────────────────────────────────────────────────────
 
   async function handleCopy() {
@@ -389,6 +446,10 @@ export default function GeneratePage() {
     setShowVoiceCheckDetails(false)
     setRuleSuggestion(null)
     setRuleSuggestionState('pending')
+    setRejected(false)
+    setShowRejectPanel(false)
+    setRejectReasons([])
+    setRejectNote('')
   }
 
   // ─── Render ───────────────────────────────────────────────────
@@ -634,6 +695,13 @@ export default function GeneratePage() {
             </div>
           )}
 
+          {rejected && (
+            <div className="mb-4 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600 flex items-center gap-2">
+              <span>✓</span>
+              <span>Thanks — noted. This draft won&apos;t be used to learn your voice. Start a new one to try again.</span>
+            </div>
+          )}
+
           {/* Rule suggestion from edit pattern */}
           {ruleSuggestion && ruleSuggestionState !== 'dismissed' && (
             <div className="mb-4 px-4 py-3 bg-[#FAFAFF] border border-[#534AB7]/20 rounded-lg text-sm">
@@ -807,6 +875,55 @@ export default function GeneratePage() {
           )}
         </div>
 
+        {/* Reject panel — "I don't like this one" */}
+        {showRejectPanel && !rejected && (
+          <div className="px-4 py-4 border-t border-gray-100 bg-[#FAFAFF]">
+            <p className="text-sm font-medium text-gray-800 mb-0.5">What didn&apos;t land?</p>
+            <p className="text-xs text-gray-400 mb-3">
+              Tell us what felt off so the next draft gets closer. All optional.
+            </p>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {REJECT_REASONS.map(r => (
+                <button
+                  key={r.value}
+                  onClick={() => toggleRejectReason(r.value)}
+                  className={cn(
+                    'px-3 py-1.5 rounded-full text-xs font-medium transition-all',
+                    rejectReasons.includes(r.value)
+                      ? 'bg-[#534AB7] text-white'
+                      : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-300'
+                  )}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={rejectNote}
+              onChange={e => setRejectNote(e.target.value)}
+              placeholder="Anything else? What would you change…"
+              rows={2}
+              maxLength={1000}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-[#534AB7]/30 focus:border-[#534AB7]"
+            />
+            <div className="flex justify-end gap-2 mt-3">
+              <button
+                onClick={() => setShowRejectPanel(false)}
+                className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitReject}
+                disabled={rejecting}
+                className="px-3 py-1.5 bg-[#534AB7] text-white rounded-lg text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {rejecting ? 'Sending…' : 'Send feedback'}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Output actions */}
         {output && !loading && (
           <div className="p-4 border-t border-gray-100 flex items-center gap-3">
@@ -830,10 +947,17 @@ export default function GeneratePage() {
               New piece
             </button>
             <button
+              onClick={() => setShowRejectPanel(v => !v)}
+              disabled={approving || approved || rejected || !contentPieceId}
+              className="px-4 py-2 text-sm rounded-lg font-medium border border-gray-200 text-gray-600 hover:border-gray-300 transition-all ml-auto disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {rejected ? 'Feedback sent' : "I don't like this one"}
+            </button>
+            <button
               onClick={() => handleApprove(false)}
-              disabled={approving || approved || !contentPieceId}
+              disabled={approving || approved || rejected || !contentPieceId}
               className={cn(
-                'px-4 py-2 text-sm rounded-lg font-medium transition-all ml-auto',
+                'px-4 py-2 text-sm rounded-lg font-medium transition-all',
                 approved
                   ? 'bg-green-500 text-white cursor-default'
                   : 'bg-[#534AB7] text-white hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed'

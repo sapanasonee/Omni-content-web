@@ -51,6 +51,31 @@ const TRANSCRIPT_MAX = 8_000     // voice_sample_transcript (longest legit field
 const LIST_MAX_ITEMS = 20        // segments/tones/topics/avoid/formats
 const LIST_ITEM_MAX = 200
 
+// How many "best content" samples a persona can store. More than one lets the
+// generation prompt learn the variety a user likes (different formats/hooks),
+// not just a single template. Kept small so the samples stay a per-request
+// token cost that's bounded and deliberate.
+export const MAX_GOOD_SAMPLES = 3
+
+// The single reader for "good" writing samples, used by every consumer
+// (generation prompt, DNA view/edit). Prefers the multi-sample array; falls
+// back to the legacy single `good` string so brand_dna.json files written
+// before multi-sample support still surface their example. Empty/blank entries
+// are dropped so callers can treat a non-empty return as "has samples".
+export function readGoodSamples(
+  examples: { good?: unknown; good_samples?: unknown } | null | undefined,
+): string[] {
+  const arr = Array.isArray(examples?.good_samples)
+    ? (examples!.good_samples as unknown[]).filter(
+        (x): x is string => typeof x === 'string' && x.trim() !== '',
+      )
+    : []
+  if (arr.length) return arr
+  return typeof examples?.good === 'string' && examples.good.trim() !== ''
+    ? [examples.good]
+    : []
+}
+
 export function normalizeSections(raw: unknown): OnboardingData | null {
   if (!raw || typeof raw !== 'object') return null
   const s = raw as Record<string, Record<string, unknown>> & { topics?: unknown; avoid?: unknown }
@@ -67,6 +92,27 @@ export function normalizeSections(raw: unknown): OnboardingData | null {
   const scale = (v: unknown) => {
     const n = typeof v === 'number' ? Math.round(v) : 3
     return Math.min(5, Math.max(1, n))
+  }
+  // Normalize the examples section. good_samples is the canonical multi-sample
+  // array (each capped, blanks dropped, at most MAX_GOOD_SAMPLES); if a client
+  // sent only the legacy `good` string we migrate it into the array. `good`
+  // stays populated (= first sample) so any legacy reader is unaffected.
+  const examplesOf = (raw: unknown) => {
+    const ex = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+    const source = Array.isArray(ex.good_samples)
+      ? ex.good_samples
+      : typeof ex.good === 'string'
+        ? [ex.good]
+        : []
+    const good_samples = source
+      .filter((x): x is string => typeof x === 'string' && x.trim() !== '')
+      .map(x => x.trim().slice(0, LONG_FIELD_MAX))
+      .slice(0, MAX_GOOD_SAMPLES)
+    return {
+      good: good_samples[0] || '',
+      good_samples,
+      bad: str(ex.bad, LONG_FIELD_MAX),
+    }
   }
 
   const sections: OnboardingData = {
@@ -85,10 +131,7 @@ export function normalizeSections(raw: unknown): OnboardingData | null {
       formality: scale(s.voice?.formality),
       pace: scale(s.voice?.pace),
     },
-    examples: {
-      good: str(s.examples?.good, LONG_FIELD_MAX),
-      bad: str(s.examples?.bad, LONG_FIELD_MAX),
-    },
+    examples: examplesOf(s.examples),
     topics: strArray(s.topics),
     voice_sample_transcript: str((s as Record<string, unknown>).voice_sample_transcript, TRANSCRIPT_MAX),
     avoid: strArray(s.avoid),

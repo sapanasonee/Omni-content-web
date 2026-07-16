@@ -468,6 +468,32 @@ export default function OnboardingPage() {
     })
   }
 
+  // ─── Best-content samples (step 4) ────────────────────────────
+  // The wizard lets a user paste up to 3 samples so we learn the variety they
+  // like. updateSection merges the partial into examples, preserving `bad`.
+  function goodSamples(): string[] {
+    const s = data.examples.good_samples
+    return s && s.length ? s : ['']
+  }
+
+  function updateSample(index: number, value: string) {
+    const samples = [...goodSamples()]
+    samples[index] = value
+    updateSection('examples', { good_samples: samples })
+  }
+
+  function addSample() {
+    const samples = goodSamples()
+    if (samples.length < 3) {
+      updateSection('examples', { good_samples: [...samples, ''] })
+    }
+  }
+
+  function removeSample(index: number) {
+    const samples = goodSamples().filter((_, i) => i !== index)
+    updateSection('examples', { good_samples: samples.length ? samples : [''] })
+  }
+
   function addTopic(topic: string) {
     const topics = data.topics || []
     if (!topics.includes(topic)) {
@@ -887,19 +913,50 @@ export default function OnboardingPage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Paste your best piece of content
+                  Paste the best piece of content you&apos;ve created
                 </label>
-                <p className="text-xs text-gray-400 mb-2">
+                <p className="text-xs text-gray-400 mb-3">
                   A LinkedIn post, email, or any writing that felt most like you.
-                  This single input transforms your output more than anything else.
+                  Haven&apos;t found your best voice yet? Paste one you admire instead.
+                  Add up to 3 — the variety helps us learn the range you like, not
+                  just one format.
                 </p>
-                <textarea
-                  value={data.examples.good}
-                  onChange={e => updateSection('examples', { good: e.target.value })}
-                  placeholder="Paste your content here..."
-                  rows={8}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#534AB7]/30 focus:border-[#534AB7] resize-none font-mono"
-                />
+                <div className="space-y-3">
+                  {goodSamples().map((sample, i) => (
+                    <div key={i} className="relative">
+                      {goodSamples().length > 1 && (
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-medium text-gray-500">
+                            Sample {i + 1}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeSample(i)}
+                            className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      )}
+                      <textarea
+                        value={sample}
+                        onChange={e => updateSample(i, e.target.value)}
+                        placeholder={i === 0 ? 'Paste your content here...' : 'Paste another piece you like...'}
+                        rows={i === 0 ? 8 : 5}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#534AB7]/30 focus:border-[#534AB7] resize-none font-mono"
+                      />
+                    </div>
+                  ))}
+                </div>
+                {goodSamples().length < 3 && (
+                  <button
+                    type="button"
+                    onClick={addSample}
+                    className="mt-2 text-xs font-medium text-[#534AB7] hover:opacity-80 transition-opacity"
+                  >
+                    + Add another piece ({goodSamples().length}/3)
+                  </button>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">

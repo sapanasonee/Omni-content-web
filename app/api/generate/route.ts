@@ -6,6 +6,7 @@ import type { BrandDNA, ContentFormat } from '@/lib/types'
 import { runLinter, runLLMCritic, reviseDraft } from '@/lib/critic'
 import { requireWorkspaceOwnership, requirePersonaInWorkspace, isUuid } from '@/lib/auth-guard'
 import { INPUT_LIMITS, rejectOversized } from '@/lib/input-limits'
+import { readGoodSamples } from '@/lib/brand-dna-schema'
 
 const FORMAT_INSTRUCTIONS: Record<ContentFormat, string> = {
   linkedin: 'LinkedIn post. Max 1300 characters. Short paragraphs. Max 4 hashtags at the end only. Start with a hook. End with insight or question.',
@@ -254,6 +255,17 @@ ${approvedExamples.map((ex, i) => `--- Example ${i + 1} ---\n${ex}`).join('\n\n'
 `
         : ''
 
+    // Best-content samples the user pasted at onboarding (up to 3). Presented
+    // as multiple exemplars so the model learns the range they like, not one
+    // template. Falls back to the legacy single `good` string via readGoodSamples.
+    const goodSamples = readGoodSamples(dna.examples)
+    const goodBlock = goodSamples.length
+      ? `GOOD EXAMPLE${goodSamples.length > 1 ? 'S' : ''} (study the patterns across ${goodSamples.length > 1 ? 'them' : 'it'}, not the words — never lift specific references):
+${goodSamples
+  .map((s, i) => (goodSamples.length > 1 ? `--- Sample ${i + 1} ---\n${s}` : s))
+  .join('\n\n')}`
+      : ''
+
     const systemPrompt = `You are a content writer for ${dna.identity.full_name}.
 
 BRAND IDENTITY:
@@ -271,8 +283,7 @@ Tones: ${dna.voice.tones.join(', ')}
 Formality: ${dna.voice.formality}/5
 Pace: ${dna.voice.pace}/5
 
-GOOD EXAMPLE (study the patterns, not the words — never lift specific references):
-${dna.examples.good}
+${goodBlock}
 
 ${dna.examples.bad ? `AVOID THIS STYLE:\n${dna.examples.bad}` : ''}
 ${ragBlock}

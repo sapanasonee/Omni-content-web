@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { Plus, X, Pencil, Shield, BookOpen, ArrowLeft } from 'lucide-react'
 import type { OnboardingData } from '@/lib/types'
+import { readGoodSamples } from '@/lib/brand-dna-schema'
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -94,7 +95,15 @@ export default function DNAPage() {
       identity: { ...brandDNA.identity },
       audience: { ...brandDNA.audience, segments: [...brandDNA.audience.segments] },
       voice: { ...brandDNA.voice, tones: [...brandDNA.voice.tones] },
-      examples: { ...brandDNA.examples },
+      examples: {
+        ...brandDNA.examples,
+        // Deep-copy into a fresh array (fallback to legacy `good`); always keep
+        // at least one editable slot so the section never renders empty.
+        good_samples: (() => {
+          const s = readGoodSamples(brandDNA.examples)
+          return s.length ? [...s] : ['']
+        })(),
+      },
       topics: [...(brandDNA.topics || [])],
       avoid: [...brandDNA.avoid],
       formats: { ...brandDNA.formats, preferred: [...brandDNA.formats.preferred] },
@@ -367,8 +376,53 @@ export default function DNAPage() {
           {/* Examples */}
           <section className="border border-[#534AB7]/20 rounded-xl p-5 bg-[#FAFAFF]">
             <p className="text-xs font-medium text-gray-400 mb-3">Writing examples</p>
-            <EditTextarea label="Best piece (the single strongest voice signal)" value={draft.examples.good} rows={6} mono
-              onChange={v => patchDraft({ examples: { ...draft.examples, good: v } })} />
+            <p className="text-xs text-gray-400 mb-2">Best pieces (the strongest voice signal — up to 3)</p>
+            <div className="space-y-3">
+              {(draft.examples.good_samples || ['']).map((sample, i) => {
+                const samples = draft.examples.good_samples || ['']
+                return (
+                  <div key={i}>
+                    {samples.length > 1 && (
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-medium text-gray-500">Sample {i + 1}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = samples.filter((_, idx) => idx !== i)
+                            patchDraft({ examples: { ...draft.examples, good_samples: next.length ? next : [''] } })
+                          }}
+                          className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    )}
+                    <textarea
+                      value={sample}
+                      rows={6}
+                      onChange={e => {
+                        const next = [...samples]
+                        next[i] = e.target.value
+                        patchDraft({ examples: { ...draft.examples, good_samples: next } })
+                      }}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#534AB7]/30 focus:border-[#534AB7] resize-none font-mono"
+                    />
+                  </div>
+                )
+              })}
+            </div>
+            {(draft.examples.good_samples || ['']).length < 3 && (
+              <button
+                type="button"
+                onClick={() => {
+                  const samples = draft.examples.good_samples || ['']
+                  patchDraft({ examples: { ...draft.examples, good_samples: [...samples, ''] } })
+                }}
+                className="mt-2 text-xs font-medium text-[#534AB7] hover:opacity-80 transition-opacity"
+              >
+                + Add another piece ({(draft.examples.good_samples || ['']).length}/3)
+              </button>
+            )}
             <div className="mt-3">
               <EditTextarea label="Content you dislike (optional)" value={draft.examples.bad} rows={3}
                 onChange={v => patchDraft({ examples: { ...draft.examples, bad: v } })} />
@@ -514,15 +568,19 @@ export default function DNAPage() {
           </section>
 
           {/* Examples */}
-          {(brandDNA.examples.good || brandDNA.examples.bad) && (
+          {(() => {
+            const samples = readGoodSamples(brandDNA.examples)
+            return (samples.length > 0 || brandDNA.examples.bad) && (
             <section className="border border-gray-100 rounded-xl p-5">
               <p className="text-xs font-medium text-gray-400 mb-2">Writing examples</p>
-              {brandDNA.examples.good && (
-                <div className="mb-3">
-                  <p className="text-xs text-gray-400 mb-1">Best piece</p>
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap line-clamp-6">{brandDNA.examples.good}</p>
+              {samples.map((sample, i) => (
+                <div key={i} className="mb-3">
+                  <p className="text-xs text-gray-400 mb-1">
+                    {samples.length > 1 ? `Best piece ${i + 1}` : 'Best piece'}
+                  </p>
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap line-clamp-6">{sample}</p>
                 </div>
-              )}
+              ))}
               {brandDNA.examples.bad && (
                 <div>
                   <p className="text-xs text-gray-400 mb-1">What to avoid</p>
@@ -530,7 +588,8 @@ export default function DNAPage() {
                 </div>
               )}
             </section>
-          )}
+            )
+          })()}
 
           {/* Avoid list */}
           {brandDNA.avoid.length > 0 && (
