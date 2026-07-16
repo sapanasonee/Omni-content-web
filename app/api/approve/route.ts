@@ -5,6 +5,7 @@ import { DocumentServiceClient } from '@google-cloud/discoveryengine'
 import { runLinter } from '@/lib/critic'
 import { analyzeEdit, type EditDelta } from '@/lib/rulebook'
 import { requireWorkspaceOwnership, requirePersonaInWorkspace } from '@/lib/auth-guard'
+import { maybeDistillVoiceProfile } from '@/lib/voice-profile'
 
 const DATASTORE_ID = 'omni-content-agent-v2_1780394823768'
 const PROJECT_NUMBER = '441385652994'
@@ -239,6 +240,19 @@ export async function POST(request: Request) {
       }
     }
 
+    // 13. Observed Voice: every DISTILL_EVERY_APPROVALS approvals, distill a
+    //     fresh profile proposal from recent behavior (approved pieces, edits,
+    //     rejections). Lands as `proposed` — steers nothing until the user
+    //     applies it on /dna. Non-fatal; on most approvals this is one cheap
+    //     count query and an early return.
+    let voiceProfileProposed = false
+    try {
+      const snapshot = await maybeDistillVoiceProfile(supabase, workspace_id, persona_id)
+      voiceProfileProposed = snapshot !== null
+    } catch (err) {
+      console.error('Voice-profile trigger failed (non-fatal):', err)
+    }
+
     return NextResponse.json({
       success: true,
       quality_score,
@@ -248,6 +262,7 @@ export async function POST(request: Request) {
       active_rag_count: Math.min((persona.active_rag_count || 0) + 1, SOLO_RAG_LIMIT),
       archived_id: archivedId,
       rule_suggestion: ruleSuggestion,
+      voice_profile_proposed: voiceProfileProposed,
     })
 
   } catch (error) {

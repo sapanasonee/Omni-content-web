@@ -5,9 +5,58 @@ import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { Plus, X, Pencil, Shield, BookOpen, ArrowLeft } from 'lucide-react'
 import type { OnboardingData } from '@/lib/types'
+import type { VoiceProfileSnapshot } from '@/lib/voice-profile'
 import { readGoodSamples } from '@/lib/brand-dna-schema'
 
 // ─── Types ──────────────────────────────────────────────────────
+
+// Renders one Observed Voice snapshot (used for both the pending proposal and
+// the applied profile — same shape, different framing around it).
+function ProfileSnapshotView({ snapshot }: { snapshot: VoiceProfileSnapshot }) {
+  return (
+    <div className="space-y-3">
+      {snapshot.style_observations.length > 0 && (
+        <div>
+          <p className="text-xs font-medium text-gray-400 mb-1">How you write</p>
+          <ul className="space-y-1">
+            {snapshot.style_observations.map((s, i) => (
+              <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
+                <span className="text-[#534AB7] mt-0.5">·</span>
+                <span>{s}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {snapshot.stances.length > 0 && (
+        <div>
+          <p className="text-xs font-medium text-gray-400 mb-1">Positions you keep taking</p>
+          <ul className="space-y-1">
+            {snapshot.stances.map((s, i) => (
+              <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
+                <span className="text-[#534AB7] mt-0.5">·</span>
+                <span>{s}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {snapshot.evolution_notes.length > 0 && (
+        <div>
+          <p className="text-xs font-medium text-gray-400 mb-1">How you&apos;ve evolved</p>
+          <ul className="space-y-1">
+            {snapshot.evolution_notes.map((s, i) => (
+              <li key={i} className="text-sm text-gray-600 italic flex items-start gap-2">
+                <span className="text-[#534AB7] mt-0.5">·</span>
+                <span>{s}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
 
 interface Rule {
   id: string
@@ -42,6 +91,14 @@ export default function DNAPage() {
   const [savingDNA, setSavingDNA] = useState(false)
   const [dnaError, setDnaError] = useState<string | null>(null)
 
+  // Observed Voice profile — active snapshot (currently used as generation
+  // texture) + proposed snapshot awaiting the user's review.
+  const [voiceProfile, setVoiceProfile] = useState<{
+    active: VoiceProfileSnapshot | null
+    proposed: VoiceProfileSnapshot | null
+  } | null>(null)
+  const [profileBusy, setProfileBusy] = useState(false)
+
   // Standing rules
   const [rules, setRules] = useState<Rule[]>([])
   const [showAdd, setShowAdd] = useState(false)
@@ -62,9 +119,10 @@ export default function DNAPage() {
         setWorkspaceId(meta.workspace_id)
         setPersonaId(meta.persona_id)
 
-        const [dnaRes, rulesRes] = await Promise.all([
+        const [dnaRes, rulesRes, profileRes] = await Promise.all([
           fetch(`/api/brand-dna?workspace_id=${meta.workspace_id}&persona_id=${meta.persona_id}`),
           fetch(`/api/contexts?workspace_id=${meta.workspace_id}&persona_id=${meta.persona_id}&scope=permanent&status=active`),
+          fetch(`/api/voice-profile?workspace_id=${meta.workspace_id}&persona_id=${meta.persona_id}`),
         ])
 
         if (dnaRes.ok) {
@@ -77,6 +135,11 @@ export default function DNAPage() {
           const r = await rulesRes.json()
           setRules(r.contexts || [])
         }
+
+        if (profileRes.ok) {
+          const p = await profileRes.json()
+          setVoiceProfile({ active: p.active || null, proposed: p.proposed || null })
+        }
       } catch (err) {
         console.error('Failed to load Brand DNA:', err)
       } finally {
@@ -85,6 +148,31 @@ export default function DNAPage() {
     }
     load()
   }, [])
+
+  // ─── Observed Voice review ────────────────────────────────────
+
+  async function respondToProfile(accept: boolean) {
+    if (!voiceProfile?.proposed || profileBusy) return
+    setProfileBusy(true)
+    try {
+      const res = await fetch('/api/voice-profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workspace_id: workspaceId,
+          persona_id: personaId,
+          action: accept ? 'accept' : 'dismiss',
+        }),
+      })
+      if (!res.ok) throw new Error()
+      const data = await res.json()
+      setVoiceProfile({ active: data.active || null, proposed: null })
+    } catch {
+      // leave the card up — the user can retry
+    } finally {
+      setProfileBusy(false)
+    }
+  }
 
   // ─── DNA editing ──────────────────────────────────────────────
 
@@ -630,6 +718,56 @@ export default function DNAPage() {
           <p className="text-xs text-gray-400">
             Complete onboarding to set up your voice, or backfill from your existing data.
           </p>
+        </div>
+      )}
+
+      {/* ─── Observed Voice ────────────────────────────────────── */}
+
+      {voiceProfile && (voiceProfile.active || voiceProfile.proposed) && (
+        <div className="mb-10">
+          <h2 className="text-sm font-semibold text-gray-900 mb-1">Observed voice</h2>
+          <p className="text-xs text-gray-400 mb-3">
+            What we&apos;ve learned from the pieces you approve, edit, and reject — texture for
+            generation, never rules. Your declared voice above always wins.
+          </p>
+
+          {voiceProfile.proposed && (
+            <div className="border border-[#534AB7]/30 rounded-xl p-5 bg-[#FAFAFF] mb-3">
+              <p className="text-xs font-medium text-[#534AB7] mb-1">Your voice has evolved</p>
+              <p className="text-xs text-gray-500 mb-3">
+                Distilled from your last {voiceProfile.proposed.based_on.approved_pieces} approved
+                pieces{voiceProfile.proposed.based_on.gold_pieces > 0 ? ` (${voiceProfile.proposed.based_on.gold_pieces} you edited yourself)` : ''}.
+                Apply it and every generation gets this as added texture.
+              </p>
+              <ProfileSnapshotView snapshot={voiceProfile.proposed} />
+              <div className="flex gap-2 mt-4">
+                <button
+                  onClick={() => respondToProfile(true)}
+                  disabled={profileBusy}
+                  className="px-3 py-1.5 bg-[#534AB7] text-white rounded-lg text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+                >
+                  {profileBusy ? 'Saving…' : 'Apply this profile'}
+                </button>
+                <button
+                  onClick={() => respondToProfile(false)}
+                  disabled={profileBusy}
+                  className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                >
+                  Not me — dismiss
+                </button>
+              </div>
+            </div>
+          )}
+
+          {voiceProfile.active && !voiceProfile.proposed && (
+            <div className="border border-gray-100 rounded-xl p-5">
+              <ProfileSnapshotView snapshot={voiceProfile.active} />
+              <p className="text-xs text-gray-400 mt-3">
+                Applied {new Date(voiceProfile.active.distilled_at).toLocaleDateString()} · refreshes
+                automatically as you approve more pieces
+              </p>
+            </div>
+          )}
         </div>
       )}
 

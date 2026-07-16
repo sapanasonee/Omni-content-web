@@ -85,6 +85,9 @@ export default function GeneratePage() {
   } | null>(null)
   const [avoidRuleState, setAvoidRuleState] = useState<'pending' | 'adding' | 'added' | 'dismissed' | 'error'>('pending')
   const [preferenceState, setPreferenceState] = useState<'pending' | 'adding' | 'added' | 'dismissed'>('pending')
+
+  // An approval just triggered a fresh Observed Voice proposal (reviewed on /dna).
+  const [voiceEvolved, setVoiceEvolved] = useState(false)
   const [ruleSuggestionState, setRuleSuggestionState] = useState<'pending' | 'accepting' | 'accepted' | 'dismissed'>('pending')
 
   // Approve state
@@ -361,6 +364,11 @@ export default function GeneratePage() {
         setRuleSuggestion(data.rule_suggestion)
         setRuleSuggestionState('pending')
       }
+      // This approval crossed the distillation threshold — a fresh Observed
+      // Voice proposal is waiting for review on /dna.
+      if (data.voice_profile_proposed) {
+        setVoiceEvolved(true)
+      }
 
     } catch (err) {
       setApproveError(err instanceof Error ? err.message : 'Approval failed')
@@ -549,6 +557,7 @@ export default function GeneratePage() {
     setDnaSuggestion(null)
     setAvoidRuleState('pending')
     setPreferenceState('pending')
+    setVoiceEvolved(false)
     setRejected(false)
     setShowRejectPanel(false)
     setRejectReasons([])
@@ -795,6 +804,22 @@ export default function GeneratePage() {
           {approveError && (
             <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
               {approveError}
+            </div>
+          )}
+
+          {/* Observed Voice proposal nudge */}
+          {voiceEvolved && (
+            <div className="mb-4 px-4 py-3 bg-[#FAFAFF] border border-[#534AB7]/20 rounded-lg text-sm flex items-center justify-between gap-3">
+              <p className="text-xs text-gray-700">
+                <span className="font-medium text-[#534AB7]">Your voice has evolved.</span>{' '}
+                We distilled fresh observations from your recent approvals — review and apply them when you&apos;re ready.
+              </p>
+              <a
+                href="/dna"
+                className="flex-shrink-0 px-3 py-1.5 bg-[#534AB7] text-white rounded-lg text-xs font-medium hover:opacity-90 transition-opacity"
+              >
+                Review →
+              </a>
             </div>
           )}
 

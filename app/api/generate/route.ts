@@ -7,6 +7,7 @@ import { runLinter, runLLMCritic, reviseDraft } from '@/lib/critic'
 import { requireWorkspaceOwnership, requirePersonaInWorkspace, isUuid } from '@/lib/auth-guard'
 import { INPUT_LIMITS, rejectOversized } from '@/lib/input-limits'
 import { readGoodSamples } from '@/lib/brand-dna-schema'
+import { loadVoiceProfile, observedVoiceBlock } from '@/lib/voice-profile'
 
 const FORMAT_INSTRUCTIONS: Record<ContentFormat, string> = {
   linkedin: 'LinkedIn post. Max 1300 characters. Short paragraphs. Max 4 hashtags at the end only. Start with a hook. End with insight or question.',
@@ -193,6 +194,14 @@ export async function POST(request: Request) {
         error: 'Brand DNA not found. Please complete onboarding first.'
       }, { status: 404 })
     }
+
+    // 5b. Observed Voice profile (user-applied snapshot of how they actually
+    //     write, distilled from approvals/edits/rejections). Soft texture only
+    //     — loadVoiceProfile degrades to an empty profile on any failure, so
+    //     this can never break generation.
+    const observedBlock = observedVoiceBlock(
+      await loadVoiceProfile(workspace_id, persona_id),
+    )
     // ── A3.1: Context resolution ─────────────────────────────
     // Precedence: one_time > campaign > permanent defaults.
     // Hard rules are never overridden (conflict confirmation = A3.4).
@@ -294,7 +303,7 @@ ${dna.voice.description}
 Tones: ${dna.voice.tones.join(', ')}
 Formality: ${dna.voice.formality}/5
 Pace: ${dna.voice.pace}/5
-
+${observedBlock}
 ${goodBlock}
 
 ${dna.examples.bad ? `AVOID THIS STYLE:\n${dna.examples.bad}` : ''}

@@ -172,14 +172,22 @@ Always `git checkout hardening-pass` and `git pull` before starting work.
     avoid-list entry and/or standing preference. Positives deliberately never
     go into `examples.good` — samples stay 100% real user writing.
 16. **Golden-set eval**: see Known gaps section — `npm run eval`.
-
-Next planned (agreed with user): **Observed Voice profile** — a
-`voice_profile.json` beside `brand_dna.json`, periodically distilled from
-approved pieces (gold-weighted) + edit deltas + rejections into descriptive
-style observations, stances/takes, and evolution notes. Confirm-before-apply
-("Your voice has evolved" review card), injected as soft texture (never rules),
-and designed as the shared voice source for the future comment-generation
-feature. Declared DNA stays authoritative; observed supplements beside it.
+17. **Observed Voice profile** (`lib/voice-profile.ts`, `/api/voice-profile`):
+    `voice_profile.json` beside `brand_dna.json` in GCS. Every 5 approvals
+    (`DISTILL_EVERY_APPROVALS`), the approve route triggers one Flash call
+    (full Flash, not Lite — highest-judgment cheap call in the system) that
+    distills the last 10 approved pieces (gold-weighted), 10 edit-delta sets,
+    and 15 rejections into: `style_observations`, `stances` (recurring
+    positions across topics — the fuel for the future comment-generation
+    feature), and `evolution_notes` (observed vs declared drift). Lands as
+    `proposed` — steers NOTHING until applied via the "Your voice has evolved"
+    review card on /dna (generate page shows a nudge banner after the
+    triggering approval). Once applied, generation injects it as an OBSERVED
+    VOICE block: soft texture with an explicit "declared VOICE and AVOID RULES
+    always win" precedence note — never a second rule system. A pending
+    unreviewed proposal blocks re-distillation (no churn); accept/dismiss both
+    clear it and the next proposal needs 5 fresh approvals. Declared DNA stays
+    authoritative; observed supplements beside it.
 
 ## Schema / migrations
 
