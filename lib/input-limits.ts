@@ -44,6 +44,10 @@ export const INPUT_LIMITS = {
   // "I don't like this one" free-text note. A sentence or two on what felt off,
   // stored (not prompted) on the rejected piece — a paragraph is plenty.
   feedback_note: 1_000,
+  // The one-shot retry corrective built from a rejection (structural
+  // directives + the capped note). Bounds the reasons block plus the note plus
+  // phrasing; injected into a single regenerate request only, never persisted.
+  correction: 2_000,
 } as const
 
 // Uniform 400 for an oversized field. Field name and ceiling are included so

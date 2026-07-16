@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import type { TrendingTopic } from '@/lib/types'
+import { REJECTION_REASONS, buildRetryCorrection } from '@/lib/rejection-feedback'
 
 type Format = 'linkedin' | 'twitter' | 'newsletter' | 'blog' | 'exec_brief'
 type Mode = 'brief' | 'raw' | 'describe'
@@ -30,16 +31,6 @@ const FORMATS: { value: Format; label: string }[] = [
   { value: 'newsletter', label: 'Newsletter' },
   { value: 'blog', label: 'Blog' },
   { value: 'exec_brief', label: 'Exec Brief' },
-]
-
-// "I don't like this one" reasons. Values are the canonical keys the
-// /api/feedback route validates against; labels are what the user sees.
-const REJECT_REASONS: { value: string; label: string }[] = [
-  { value: 'tone_mismatch', label: "Doesn't match my tone" },
-  { value: 'too_flat', label: "It's too flat" },
-  { value: 'weak_hook', label: "Didn't like the hook" },
-  { value: 'weak_structure', label: "Didn't like the structure" },
-  { value: 'weak_closing', label: "Didn't like the closing" },
 ]
 
 const MODES: { value: Mode; label: string; placeholder: string }[] = [
@@ -186,7 +177,7 @@ export default function GeneratePage() {
 
   // ─── Generate ─────────────────────────────────────────────────
 
-  async function handleGenerate() {
+  async function handleGenerate(correction?: string) {
     if (!input.trim()) return
     setLoading(true)
     setError(null)
@@ -220,6 +211,7 @@ export default function GeneratePage() {
           description: mode === 'describe' ? input : undefined,
           campaign_context_id: selectedCampaignId || undefined,
           one_time_context: oneTimeContext.trim() || undefined,
+          correction: correction?.trim() || undefined,
         }),
       })
 
@@ -384,8 +376,11 @@ export default function GeneratePage() {
     )
   }
 
-  async function submitReject() {
+  async function submitReject(thenRegenerate: boolean) {
     if (!contentPieceId || rejecting) return
+    // Snapshot the correction BEFORE we archive/regenerate, because
+    // handleGenerate clears the reason/note state as it starts a fresh run.
+    const correction = thenRegenerate ? buildRetryCorrection(rejectReasons, rejectNote) : ''
     setRejecting(true)
     setApproveError(null)
     try {
@@ -405,6 +400,8 @@ export default function GeneratePage() {
       if (!res.ok) throw new Error(data.error || 'Could not save your feedback')
       setRejected(true)
       setShowRejectPanel(false)
+      // Immediate retry: regenerate the same piece, steered by what they flagged.
+      if (thenRegenerate) handleGenerate(correction)
     } catch (err) {
       setApproveError(err instanceof Error ? err.message : 'Could not save your feedback')
     } finally {
@@ -656,7 +653,7 @@ export default function GeneratePage() {
         {/* Generate button */}
         <div className="p-4 border-t border-gray-100">
           <button
-            onClick={handleGenerate}
+            onClick={() => handleGenerate()}
             disabled={!input.trim() || loading}
             className="w-full py-2.5 bg-[#534AB7] text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
           >
@@ -883,7 +880,7 @@ export default function GeneratePage() {
               Tell us what felt off so the next draft gets closer. All optional.
             </p>
             <div className="flex flex-wrap gap-2 mb-3">
-              {REJECT_REASONS.map(r => (
+              {REJECTION_REASONS.map(r => (
                 <button
                   key={r.value}
                   onClick={() => toggleRejectReason(r.value)}
@@ -906,19 +903,26 @@ export default function GeneratePage() {
               maxLength={1000}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-[#534AB7]/30 focus:border-[#534AB7]"
             />
-            <div className="flex justify-end gap-2 mt-3">
+            <div className="flex items-center justify-end gap-2 mt-3">
               <button
                 onClick={() => setShowRejectPanel(false)}
-                className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors mr-auto"
               >
                 Cancel
               </button>
               <button
-                onClick={submitReject}
+                onClick={() => submitReject(false)}
+                disabled={rejecting}
+                className="px-3 py-1.5 text-xs text-gray-600 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors disabled:opacity-50"
+              >
+                {rejecting ? 'Saving…' : 'Just send feedback'}
+              </button>
+              <button
+                onClick={() => submitReject(true)}
                 disabled={rejecting}
                 className="px-3 py-1.5 bg-[#534AB7] text-white rounded-lg text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
               >
-                {rejecting ? 'Sending…' : 'Send feedback'}
+                {rejecting ? 'Working…' : 'Regenerate, fixing this'}
               </button>
             </div>
           </div>

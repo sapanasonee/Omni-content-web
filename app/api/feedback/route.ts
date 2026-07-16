@@ -2,6 +2,12 @@ import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { requireWorkspaceOwnership, requirePersonaInWorkspace } from '@/lib/auth-guard'
 import { INPUT_LIMITS, rejectOversized } from '@/lib/input-limits'
+import {
+  REJECTION_REASON_VALUES,
+  REJECTION_WINDOW,
+  recurringCorrectives,
+  type StoredRejection,
+} from '@/lib/rejection-feedback'
 
 // ─── Why this route exists ───────────────────────────────────────────────────
 //
@@ -19,15 +25,29 @@ import { INPUT_LIMITS, rejectOversized } from '@/lib/input-limits'
 // this needs no migration to ship.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Canonical rejection reasons. UI labels live client-side; only these keys are
-// accepted here so a bad/crafted client can't write arbitrary values.
-const REJECTION_REASONS = [
-  'tone_mismatch',
-  'too_flat',
-  'weak_hook',
-  'weak_structure',
-  'weak_closing',
-] as const
+// Pull the persona's recent rejection records (most-recent-first). Shared by
+// the POST (feeds nothing today) and the GET that surfaces active correctives
+// on /dna. Only this route ever sets status='archived', and we still guard on
+// the presence of a rejection payload so an archived-for-another-reason piece
+// (should one ever exist) can't slip in.
+async function loadRecentRejections(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  workspaceId: string,
+  personaId: string,
+): Promise<StoredRejection[]> {
+  const { data } = await supabase
+    .from('content_pieces')
+    .select('resolved_context')
+    .eq('workspace_id', workspaceId)
+    .eq('persona_id', personaId)
+    .eq('status', 'archived')
+    .order('created_at', { ascending: false })
+    .limit(REJECTION_WINDOW)
+
+  return (data || [])
+    .map(r => (r.resolved_context as { rejection?: StoredRejection } | null)?.rejection)
+    .filter((x): x is StoredRejection => !!x && typeof x === 'object')
+}
 
 export async function POST(request: Request) {
   try {
@@ -50,7 +70,7 @@ export async function POST(request: Request) {
     const rawReasons = Array.isArray(reasons) ? reasons : []
     const cleanReasons = Array.from(
       new Set(rawReasons.filter((r: unknown): r is string =>
-        typeof r === 'string' && (REJECTION_REASONS as readonly string[]).includes(r),
+        typeof r === 'string' && REJECTION_REASON_VALUES.includes(r),
       )),
     )
     if (rawReasons.length > 0 && cleanReasons.length === 0) {
@@ -113,5 +133,37 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Feedback error:', error)
     return NextResponse.json({ error: 'Feedback failed' }, { status: 500 })
+  }
+}
+
+// GET — the active recurring correctives for a persona: the directives that
+// have recurred enough to steer every generation right now. Powers the "what
+// we're currently correcting" surface on /dna so the auto-steer is visible, not
+// hidden. Read-only; same ownership guards as everything else.
+export async function GET(request: Request) {
+  try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const workspace_id = searchParams.get('workspace_id')
+    const persona_id = searchParams.get('persona_id')
+    if (!workspace_id || !persona_id) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+
+    const wsGuard = await requireWorkspaceOwnership(supabase, user.id, workspace_id)
+    if (wsGuard.failure) return wsGuard.failure
+    const personaGuard = await requirePersonaInWorkspace(supabase, workspace_id, persona_id)
+    if (personaGuard.failure) return personaGuard.failure
+
+    const rejections = await loadRecentRejections(supabase, workspace_id, persona_id)
+    return NextResponse.json({ correctives: recurringCorrectives(rejections) })
+  } catch (error) {
+    console.error('Feedback GET error:', error)
+    return NextResponse.json({ error: 'Failed to load feedback' }, { status: 500 })
   }
 }
