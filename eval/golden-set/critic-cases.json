@@ -1,0 +1,92 @@
+{
+  "_readme": "Curated cases for the LLM critic (run with --critic; needs live GCP creds and costs ~$0.0005/case). Unlike the linter set, critic output is nondeterministic, so this is a small case set scored against an accuracy threshold rather than strictly. Each case runs runLLMCritic(fixture_dna, user_input, draft) and expects should_flag. The fixture DNA below is what every draft is judged against — casual/direct voice with explicit avoid rules.",
+  "fixture_dna": {
+    "identity": {
+      "full_name": "Golden Fixture",
+      "role": "Bootstrapped SaaS founder",
+      "industry": "B2B SaaS"
+    },
+    "audience": {
+      "description": "Early-stage founders who distrust hype and want tactical, lived advice.",
+      "segments": ["Founders", "Indie hackers"]
+    },
+    "voice": {
+      "description": "Direct and casual. Short sentences. First-person stories from real experience. Never corporate, never preachy, never salesy.",
+      "tones": ["Direct", "Casual"],
+      "formality": 2,
+      "pace": 4
+    },
+    "examples": {
+      "good": "",
+      "bad": "We are thrilled to announce a synergistic partnership that will leverage cutting-edge solutions to deliver unparalleled value at scale. #innovation #growth #partnership"
+    },
+    "topics": ["Bootstrapping", "SaaS growth", "Founder lessons"],
+    "avoid": [
+      "Corporate jargon like 'synergy', 'leverage', or 'circle back'",
+      "Hashtags anywhere in the post",
+      "Motivational-poster platitudes with no story behind them"
+    ],
+    "formats": {
+      "preferred": ["LinkedIn"],
+      "cadence": "Weekly"
+    }
+  },
+  "cases": [
+    {
+      "id": "critic-001",
+      "should_flag": false,
+      "note": "grounded + on-voice: everything in the draft traces to the input, register matches the DNA",
+      "user_input": "Our churn dropped last month. Only thing we changed was answering every support ticket within an hour instead of within a day.",
+      "draft": "Our churn dropped last month. We didn't ship a single feature. We just started answering every support ticket within an hour instead of within a day. Turns out speed is a retention strategy."
+    },
+    {
+      "id": "critic-002",
+      "should_flag": true,
+      "note": "ungrounded claim: the 73% statistic appears nowhere in the input",
+      "user_input": "I want to write about how answering support tickets faster reduced our churn.",
+      "draft": "73% of SaaS companies lose customers to slow support. We were one of them. Then we started answering every ticket within an hour, and churn fell off a cliff."
+    },
+    {
+      "id": "critic-003",
+      "should_flag": true,
+      "note": "avoid violation: hashtags are an explicit hard stop in the fixture DNA",
+      "user_input": "Write about how we got our first 100 customers from forum answers instead of ads.",
+      "draft": "We got our first 100 customers without spending a dollar on ads. We just answered questions on forums where founders already hang out. Slow, boring, effective. #growth #startup #founderlife"
+    },
+    {
+      "id": "critic-004",
+      "should_flag": true,
+      "note": "avoid violation: corporate jargon ('leverage', 'synergies', 'circle back') is an explicit hard stop",
+      "user_input": "Write about our new integration with a scheduling tool.",
+      "draft": "Excited to leverage powerful synergies with our new scheduling integration. We'll circle back with our community on the roadmap, but this partnership unlocks best-in-class value for stakeholders across the board."
+    },
+    {
+      "id": "critic-005",
+      "should_flag": true,
+      "note": "voice drift: stiff third-person press-release register against a casual first-person DNA",
+      "user_input": "We hit profitability at month 14 without raising money.",
+      "draft": "The company is pleased to report that profitability was achieved in the fourteenth month of operations. This milestone was accomplished without external capital and reflects a commitment to sustainable, disciplined financial management."
+    },
+    {
+      "id": "critic-006",
+      "should_flag": false,
+      "note": "grounded statistic: the number IS in the user input, so it must not be flagged as ungrounded",
+      "user_input": "We sent 100 cold emails by hand before automating. Got 9 replies and 2 customers from that batch.",
+      "draft": "I sent 100 cold emails by hand before automating anything. 9 replies. 2 customers. The manual reps taught me our pitch — the automation just scaled what already worked."
+    },
+    {
+      "id": "critic-007",
+      "should_flag": true,
+      "note": "ungrounded event: a named conference appearance invented from nothing",
+      "user_input": "Write something about why small teams ship faster.",
+      "draft": "After speaking at Davos last week about lean teams, I'm more convinced than ever. Small teams ship faster because every person owns the outcome, not a slice of the process."
+    },
+    {
+      "id": "critic-008",
+      "should_flag": false,
+      "note": "pure opinion, on-voice: no facts to ground, casual register — the critic must not invent problems",
+      "user_input": "My take: most founder advice online is written by people who never operated anything.",
+      "draft": "Most founder advice online is written by people who never ran anything. You can tell. The advice optimizes for sounding smart, not for surviving Tuesday. Find operators. Ignore theorists."
+    }
+  ]
+}

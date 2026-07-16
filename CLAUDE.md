@@ -151,6 +151,36 @@ Always `git checkout hardening-pass` and `git pull` before starting work.
     (ran/passed/revised + all flags) is persisted into
     `content_pieces.resolved_context` — queryable per piece from day one.
 
+## Built in the follow-up session (branch `claude/main-branch-hardening-pass-c48bif`)
+
+13. **Security hardening**: shared ownership guards (`lib/auth-guard.ts`) on
+    every route, length caps on all prompt-bound inputs (`lib/input-limits.ts`),
+    atomic quota reservation, signup email-domain policy
+    (`lib/signup-policy.ts`), Brand DNA normalization on the primary write path.
+14. **Multi-sample onboarding**: "paste your best content" → up to 3 samples
+    ("created or admire"), stored as `examples.good_samples[]` with legacy
+    single-string fallback via `readGoodSamples` (`lib/brand-dna-schema.ts`).
+15. **Rejection feedback** ("I don't like this one", `/api/feedback`,
+    `lib/rejection-feedback.ts`): archives the draft (never reaches RAG),
+    records structured reasons + free-text note into
+    `resolved_context.rejection`. Three consumers, ALL confirm-first:
+    (a) "Regenerate, fixing this" — one-shot corrective steers an immediate
+    retry (the only place the raw note reaches a prompt); (b) a reason
+    recurring 3×/15 drafts → "make it a standing rule?" card (same
+    suggested→active/closed contexts flow as the edit-rulebook); (c) the note
+    is distilled by Flash-Lite (`lib/dna-feedback.ts`) into a proposed DNA
+    avoid-list entry and/or standing preference. Positives deliberately never
+    go into `examples.good` — samples stay 100% real user writing.
+16. **Golden-set eval**: see Known gaps section — `npm run eval`.
+
+Next planned (agreed with user): **Observed Voice profile** — a
+`voice_profile.json` beside `brand_dna.json`, periodically distilled from
+approved pieces (gold-weighted) + edit deltas + rejections into descriptive
+style observations, stances/takes, and evolution notes. Confirm-before-apply
+("Your voice has evolved" review card), injected as soft texture (never rules),
+and designed as the shared voice source for the future comment-generation
+feature. Declared DNA stays authoritative; observed supplements beside it.
+
 ## Schema / migrations
 
 Two migration files exist under `supabase/migrations/` — **written this
@@ -209,11 +239,16 @@ error, check the live schema before assuming the code is wrong.
   'sounds like me' on draft #1" — the metric the original build plan called
   out as *the* validation signal before adding more breadth. Small build,
   high value — do this before anything else evals-related.
-- **Golden-set eval script**: no automated regression test for the linter/critic
-  exists. Should be a repo script: ~30 known-AI samples that must flag, ~30 of
-  the user's real posts that must pass, run against `runLinter` +
-  `runLLMCritic`. Protects the wedge when patterns/prompts get edited. The
-  AI-tells list above is exactly the corpus seed for this.
+- **Golden-set eval script** — DONE (`npm run eval`). `scripts/eval-golden-set.ts`
+  runs 30 must-flag + 30 must-pass samples (`eval/golden-set/*.json`) against
+  `runLinter`; strict, free, CI-able (exit 1 on any miss). Must-flag samples
+  declare which tell id must fire, so a sample can't silently rot by flagging
+  for the wrong reason. `npm run eval -- --critic` additionally runs 8 curated
+  `runLLMCritic` cases against a fixture DNA (live Gemini, ~$0.0005/case,
+  80%-accuracy threshold because LLM output varies). **Run it after every edit
+  to `lib/ai-tells.ts` or the critic prompt.** The must-pass set is synthetic
+  seed data — replace/augment with the user's real posts over time (that's the
+  real wedge protection), and add a must-flag entry for every new tell.
 - **Early-access / "first 10 founders" offer**: no enforced cap exists (no
   billing, no waitlist counter). Either commit to something crediblly scarce
   without needing billing (founding-member status, locked-in pricing later)

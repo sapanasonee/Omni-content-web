@@ -1,0 +1,155 @@
+{
+  "_readme": "Samples the linter MUST flag. Each entry lists the tell id(s) it expects to trip (see lib/ai-tells.ts; 'heuristic:colons' and 'heuristic:too-short' are the two built-in heuristics). The eval fails if a sample trips nothing OR if an expected tell doesn't fire — a sample that flags for the wrong reason is a rotten sample. Add new entries whenever you add a pattern to lib/ai-tells.ts.",
+  "samples": [
+    {
+      "id": "flag-001",
+      "expect": ["fast-paced-world"],
+      "text": "In today's fast-paced world, founders can't afford to spend hours writing content. That's why smart teams are turning to systems that do the heavy lifting for them."
+    },
+    {
+      "id": "flag-002",
+      "expect": ["fast-paced-world"],
+      "text": "Standing out is hard. In todays fast paced world, attention is the scarcest resource any brand can earn, and most of us are losing the battle before we even start."
+    },
+    {
+      "id": "flag-003",
+      "expect": ["fast-paced-world"],
+      "text": "IN TODAY'S FAST-PACED WORLD you need to move quickly or get left behind. The founders who win are the ones who ship before they feel ready."
+    },
+    {
+      "id": "flag-004",
+      "expect": ["as-we-navigate"],
+      "text": "As we navigate the complexities of modern entrepreneurship, one thing becomes clear — consistency beats intensity every single time."
+    },
+    {
+      "id": "flag-005",
+      "expect": ["as-we-navigate"],
+      "text": "There are lessons everywhere as we navigate uncertain markets. The teams that survive aren't the smartest; they're the ones that adapt fastest."
+    },
+    {
+      "id": "flag-006",
+      "expect": ["as-we-navigate"],
+      "text": "As we navigate this new era of AI-powered work, the skills that got you here won't get you there. Time to unlearn and relearn."
+    },
+    {
+      "id": "flag-007",
+      "expect": ["ever-evolving"],
+      "text": "In the ever-evolving landscape of digital marketing, staying ahead means constantly testing, learning, and iterating on what works."
+    },
+    {
+      "id": "flag-008",
+      "expect": ["ever-evolving"],
+      "text": "Success in the ever evolving world of startups requires more than a good idea. It requires relentless execution and a thick skin."
+    },
+    {
+      "id": "flag-009",
+      "expect": ["ever-evolving"],
+      "text": "What does leadership mean in the ever-evolving workplace? It means creating clarity when everything around your team is changing."
+    },
+    {
+      "id": "flag-010",
+      "expect": ["not-x-its-y"],
+      "text": "It's not about working harder, it's about working smarter. The best founders I know protect their mornings like their runway depends on it."
+    },
+    {
+      "id": "flag-011",
+      "expect": ["not-x-its-y"],
+      "text": "Growth is a mindset. Its not a tactic, its a discipline you practice every day until it compounds into something people notice."
+    },
+    {
+      "id": "flag-012",
+      "expect": ["not-x-its-y"],
+      "text": "I finally understood what my mentor meant. It's not the market that kills startups, it's the founder giving up one week too early."
+    },
+    {
+      "id": "flag-013",
+      "expect": ["not-x-its-y"],
+      "text": "Remote work taught me something important about culture. IT'S NOT the office perks that bond a team, IT'S the way you handle the hard weeks together."
+    },
+    {
+      "id": "flag-014",
+      "expect": ["isnt-x-this-is"],
+      "text": "This isn't a setback, this is a setup for the comeback. Every rejection this quarter taught us something the next pitch needed."
+    },
+    {
+      "id": "flag-015",
+      "expect": ["isnt-x-this-is"],
+      "text": "Look closely at what's happening in AI right now. This isnt hype, this is the biggest platform shift since mobile — and most teams are still asleep."
+    },
+    {
+      "id": "flag-016",
+      "expect": ["isnt-x-this-is"],
+      "text": "We just crossed 1,000 users. This isn't luck, this is eighteen months of unglamorous iteration finally showing up in the numbers."
+    },
+    {
+      "id": "flag-017",
+      "expect": ["ill-be-honest"],
+      "text": "I'll be honest — the first year of building this company nearly broke me. Nobody warns you about the loneliness of the founder seat."
+    },
+    {
+      "id": "flag-018",
+      "expect": ["ill-be-honest"],
+      "text": "Ill be honest with you all. Most of my LinkedIn advice posts were written at 2am while doubting every word of them."
+    },
+    {
+      "id": "flag-019",
+      "expect": ["ill-be-honest"],
+      "text": "You asked how fundraising is going. I'LL BE HONEST: slower than I hoped, faster than I feared, and educational either way."
+    },
+    {
+      "id": "flag-020",
+      "expect": ["if-im-being-honest"],
+      "text": "If I'm being honest, I didn't believe in our own pivot until a customer described our product back to me better than I ever had."
+    },
+    {
+      "id": "flag-021",
+      "expect": ["if-im-being-honest"],
+      "text": "If im being honest, the hardest part of leadership isn't the decisions. It's watching someone struggle with a task you could finish in ten minutes."
+    },
+    {
+      "id": "flag-022",
+      "expect": ["heres-the-truth"],
+      "text": "Everyone wants the secret to going viral. Here's the truth: there is no secret, just a hundred unsexy reps nobody claps for."
+    },
+    {
+      "id": "flag-023",
+      "expect": ["heres-the-truth"],
+      "text": "Heres the truth: your competitors aren't reading your content, your customers are. Write for the people who pay you."
+    },
+    {
+      "id": "flag-024",
+      "expect": ["when-it-hit-me"],
+      "text": "I watched our biggest customer churn in silence. That's when it hit me: we'd been building features instead of relationships."
+    },
+    {
+      "id": "flag-025",
+      "expect": ["when-it-hit-me"],
+      "text": "Thats when it hit me: nobody on the team could explain our positioning in one sentence, including me. We fixed that before writing another line of code."
+    },
+    {
+      "id": "flag-026",
+      "expect": ["heuristic:colons"],
+      "text": "Three lessons from Q2: First: talk to users weekly. Second: ship smaller. Third: celebrate the boring wins. Bonus: sleep is a growth strategy."
+    },
+    {
+      "id": "flag-027",
+      "expect": ["heuristic:too-short"],
+      "text": "Ship it. Learn. Repeat."
+    },
+    {
+      "id": "flag-028",
+      "expect": ["heuristic:too-short"],
+      "text": "Consistency beats intensity."
+    },
+    {
+      "id": "flag-029",
+      "expect": ["not-x-its-y", "ill-be-honest"],
+      "text": "I'll be honest, scaling a team humbled me. It's not the hiring that's hard, it's the letting go of doing everything yourself."
+    },
+    {
+      "id": "flag-030",
+      "expect": ["fast-paced-world", "heres-the-truth"],
+      "text": "In today's fast-paced world everyone is chasing productivity hacks. Here's the truth: the hack is doing the same important thing every day for a year."
+    }
+  ]
+}

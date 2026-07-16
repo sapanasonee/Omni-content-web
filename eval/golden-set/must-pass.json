@@ -1,0 +1,131 @@
+{
+  "_readme": "Real-sounding posts the linter must NEVER flag — this half protects users from false positives, which are worse than misses (a founder whose genuine voice gets flagged stops trusting the product). These 30 are hand-written seeds; REPLACE/AUGMENT them with the user's real approved posts over time — that's the actual wedge protection. Entries with a 'note' are deliberate near-misses that sit just outside a pattern's boundary; if a pattern edit starts catching them, the eval tells you before a user does.",
+  "samples": [
+    {
+      "id": "pass-001",
+      "text": "Spent the morning re-reading support tickets from our first ten customers. Half our roadmap was sitting right there the whole time."
+    },
+    {
+      "id": "pass-002",
+      "text": "We killed a feature 40 people loved to save the one thousand who were confused by it. Still thinking about those 40 emails."
+    },
+    {
+      "id": "pass-003",
+      "text": "My cofounder asked me why our churn dropped in March. I checked the data. We didn't ship anything in March. We just answered support faster."
+    },
+    {
+      "id": "pass-004",
+      "note": "near-miss: 'it's not X, but it's Y' — the 'but' breaks the parallel-contrast pattern; genuine humility phrasing must survive",
+      "text": "It's not much, but it's a start — 12 paying customers, all from word of mouth."
+    },
+    {
+      "id": "pass-005",
+      "note": "near-miss: 'honestly' is fine; only the announced 'I'll be honest' construction is the tell",
+      "text": "Honestly, the best marketing we ever did was rewriting our onboarding emails at 1am after a customer call that stung."
+    },
+    {
+      "id": "pass-006",
+      "text": "Hiring lesson from this year: slow down on the resume, speed up on the reference calls. References told me everything twice."
+    },
+    {
+      "id": "pass-007",
+      "text": "I used to write 2,000-word essays nobody read. Now I write 200-word notes people forward to their teams. Shorter forced me to actually have a point."
+    },
+    {
+      "id": "pass-008",
+      "text": "The demo crashed twice in front of our biggest prospect. They signed anyway. People buy the way you recover, apparently."
+    },
+    {
+      "id": "pass-009",
+      "text": "Three years in and I still get nervous publishing. The day that stops is probably the day I've started writing for the algorithm instead of the reader."
+    },
+    {
+      "id": "pass-010",
+      "text": "Our best channel is embarrassingly boring. We answer questions on forums where our customers already hang out. That's it. That's the strategy."
+    },
+    {
+      "id": "pass-011",
+      "note": "near-miss: 'fast-paced' alone is legitimate; only the full 'in today's fast-paced world' opener is the tell",
+      "text": "Agency life is fast-paced by design, and I stopped apologizing for loving the speed."
+    },
+    {
+      "id": "pass-012",
+      "note": "near-miss: 'ever-evolving' without the 'in the' framing is legitimate",
+      "text": "Our pricing page stays ever-evolving; we've rewritten it six times this year and each rewrite taught us who we're actually for."
+    },
+    {
+      "id": "pass-013",
+      "text": "A customer described our product back to me better than our homepage does. I asked if I could steal her words. She said yes. Conversion went up."
+    },
+    {
+      "id": "pass-014",
+      "text": "I blocked my calendar for deep work and then spent the block reorganizing my task manager. The system was never the problem."
+    },
+    {
+      "id": "pass-015",
+      "text": "We raised nothing. We hit profitability at month 14 on a spreadsheet and stubbornness. Default alive changes every conversation you have."
+    },
+    {
+      "id": "pass-016",
+      "text": "The intern asked why we do standups. Nobody had a good answer. We cancelled them for a month as an experiment. Shipping went up."
+    },
+    {
+      "id": "pass-017",
+      "note": "near-miss: the dramatic-reveal tell requires the colon; the em-dash form is currently allowed — if that changes, this sample forces the decision to be deliberate",
+      "text": "That's when it hit me — we'd been optimizing a funnel nobody was entering."
+    },
+    {
+      "id": "pass-018",
+      "text": "Wrote 100 cold emails by hand before automating anything. The replies taught me our pitch. The automation just scaled what already worked."
+    },
+    {
+      "id": "pass-019",
+      "text": "You can tell a lot about a company by its empty states. Ours used to say 'No data'. Now they teach you the next step. Small screens, big signal."
+    },
+    {
+      "id": "pass-020",
+      "text": "Every pivot we made started as a support ticket we almost ignored."
+    },
+    {
+      "id": "pass-021",
+      "text": "I turned down a partnership that would have doubled our traffic. Their audience wasn't our buyer. Growth that doesn't convert is just a hosting bill."
+    },
+    {
+      "id": "pass-022",
+      "text": "My writing rule after six years of editing other people's posts is simple. Cut the first paragraph. It was warmup. The post starts at paragraph two."
+    },
+    {
+      "id": "pass-023",
+      "text": "We lost the deal to a worse product with better onboarding. Sat with that one for a while. Then we rebuilt ours in two weeks."
+    },
+    {
+      "id": "pass-024",
+      "text": "Nobody on my team knew our top three customers by name. Fixed that this week. Everyone ships differently when the user has a face."
+    },
+    {
+      "id": "pass-025",
+      "note": "near-miss: 'the truth about' is legitimate; only the 'here's the truth:' reveal is the tell",
+      "text": "The truth about our overnight launch success is that it took eleven months of unglamorous groundwork nobody tweeted about."
+    },
+    {
+      "id": "pass-026",
+      "text": "Asked ten users what they'd pay before writing a line of code. Eight laughed. Two pulled out a card. Built it for the two."
+    },
+    {
+      "id": "pass-027",
+      "text": "I keep a folder of rejection emails. Re-read it the week we crossed $10k MRR. Growth is quiet revenge done politely."
+    },
+    {
+      "id": "pass-028",
+      "text": "Stop hiring for culture fit, start hiring for culture add. I know how that sounds. But the quietest hire we made rewrote how we run retros."
+    },
+    {
+      "id": "pass-029",
+      "text": "Shipped a pricing change at 9am, rolled it back by noon, shipped the fixed version Friday. Customers noticed the speed more than the mistake."
+    },
+    {
+      "id": "pass-030",
+      "text": "Six drafts of this post and the final version is basically the voice memo I sent my cofounder on Tuesday. Should have started there."
+    }
+  ]
+}
