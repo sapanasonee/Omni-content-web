@@ -3,11 +3,15 @@ import { NextResponse } from 'next/server'
 import { requireWorkspaceOwnership, requirePersonaInWorkspace } from '@/lib/auth-guard'
 import { INPUT_LIMITS, rejectOversized } from '@/lib/input-limits'
 import {
+  REJECTION_REASONS,
   REJECTION_REASON_VALUES,
   REJECTION_WINDOW,
   recurringReasons,
   type StoredRejection,
 } from '@/lib/rejection-feedback'
+import { distillRejectionNote } from '@/lib/dna-feedback'
+import { Storage } from '@google-cloud/storage'
+import type { BrandDNA } from '@/lib/types'
 
 // ─── Why this route exists ───────────────────────────────────────────────────
 //
@@ -185,7 +189,89 @@ export async function POST(request: Request) {
       console.error('Rejection recurrence check failed (non-fatal):', err)
     }
 
-    return NextResponse.json({ success: true, rule_suggestion: ruleSuggestion })
+    // 8. Note → DNA distillation. A free-text note is the richest signal in the
+    //    rejection, but raw notes are piece-specific and conversational — never
+    //    written to permanent storage as-is. One Flash-Lite call (only when a
+    //    note exists) distills it into (a) a structural avoid rule proposed for
+    //    the Brand DNA avoid list — the strongest home, since avoid rules are
+    //    enforced by BOTH the generation prompt's hard stops and the LLM critic
+    //    — and (b) a "what they'd rather have" preference proposed as a standing
+    //    rule. Both are suggestions the user confirms on the generate page;
+    //    nothing here writes to the DNA. Non-fatal like every LLM side-call.
+    let dnaSuggestion: {
+      avoid_rule: string | null
+      preference: { id: string; content: string } | null
+    } | null = null
+    if (noteStr) {
+      try {
+        // Existing avoid list + active rules feed the distiller so it returns
+        // null instead of proposing something already covered.
+        let existingAvoid: string[] = []
+        try {
+          const storage = new Storage({ projectId: process.env.GCP_PROJECT_ID })
+          const file = storage
+            .bucket(process.env.GCS_BUCKET_NAME!)
+            .file(`workspaces/${workspace_id}/personas/${persona_id}/brand_dna.json`)
+          const [content] = await file.download()
+          const dna: BrandDNA = JSON.parse(content.toString())
+          if (Array.isArray(dna.sections?.avoid)) existingAvoid = dna.sections.avoid
+        } catch {
+          // No DNA file / unreadable — distill without the dedupe context.
+        }
+
+        const { data: activeRules } = await supabase
+          .from('contexts')
+          .select('content')
+          .eq('persona_id', persona_id)
+          .eq('scope', 'permanent')
+          .eq('status', 'active')
+
+        const reasonLabels = REJECTION_REASONS
+          .filter(r => cleanReasons.includes(r.value))
+          .map(r => r.label)
+
+        const distilled = await distillRejectionNote(
+          noteStr,
+          reasonLabels,
+          existingAvoid,
+          (activeRules || []).map(r => r.content as string),
+        )
+
+        if (distilled && (distilled.avoid_rule || distilled.preference)) {
+          // The preference rides the same suggested→active/closed contexts flow
+          // as every other rule suggestion, so accept/dismiss reuses the
+          // existing PATCH path and a dismissal is permanent.
+          let preference: { id: string; content: string } | null = null
+          if (distilled.preference) {
+            const { data: prefRow, error: prefErr } = await supabase
+              .from('contexts')
+              .insert({
+                workspace_id,
+                persona_id,
+                scope: 'permanent',
+                tier: 'default',
+                status: 'suggested',
+                content: distilled.preference,
+              })
+              .select('id, content')
+              .single()
+            if (prefErr) console.error('Preference suggestion insert failed (non-fatal):', prefErr)
+            else preference = prefRow
+          }
+          // The avoid rule is ephemeral until accepted — the client writes it
+          // into the DNA avoid list via PUT /api/brand-dna on confirm.
+          dnaSuggestion = { avoid_rule: distilled.avoid_rule, preference }
+        }
+      } catch (err) {
+        console.error('Note→DNA distillation failed (non-fatal):', err)
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      rule_suggestion: ruleSuggestion,
+      dna_suggestion: dnaSuggestion,
+    })
   } catch (error) {
     console.error('Feedback error:', error)
     return NextResponse.json({ error: 'Feedback failed' }, { status: 500 })

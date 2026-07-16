@@ -74,6 +74,17 @@ export default function GeneratePage() {
   // for edit-derived suggestions, set to the "you've rejected N drafts…" line
   // for rejection-derived ones.
   const [ruleSuggestion, setRuleSuggestion] = useState<{ id: string; content: string; heading?: string } | null>(null)
+
+  // Note→DNA suggestion state. When a rejection note distills into durable
+  // guidance, the server proposes it here: an avoid rule (written to the Brand
+  // DNA avoid list on accept) and/or a preference (a suggested context,
+  // activated on accept). Each half has its own accept/dismiss lifecycle.
+  const [dnaSuggestion, setDnaSuggestion] = useState<{
+    avoid_rule: string | null
+    preference: { id: string; content: string } | null
+  } | null>(null)
+  const [avoidRuleState, setAvoidRuleState] = useState<'pending' | 'adding' | 'added' | 'dismissed' | 'error'>('pending')
+  const [preferenceState, setPreferenceState] = useState<'pending' | 'adding' | 'added' | 'dismissed'>('pending')
   const [ruleSuggestionState, setRuleSuggestionState] = useState<'pending' | 'accepting' | 'accepted' | 'dismissed'>('pending')
 
   // Approve state
@@ -196,11 +207,14 @@ export default function GeneratePage() {
     setShowRejectPanel(false)
     setRejectReasons([])
     setRejectNote('')
-    // A fresh, unsteered generation clears any stale suggestion card. A
-    // rejection-retry (correction present) keeps the suggestion just surfaced.
+    // A fresh, unsteered generation clears any stale suggestion cards. A
+    // rejection-retry (correction present) keeps the suggestions just surfaced.
     if (!correction) {
       setRuleSuggestion(null)
       setRuleSuggestionState('pending')
+      setDnaSuggestion(null)
+      setAvoidRuleState('pending')
+      setPreferenceState('pending')
     }
 
     try {
@@ -416,6 +430,13 @@ export default function GeneratePage() {
         setRuleSuggestion(data.rule_suggestion)
         setRuleSuggestionState('pending')
       }
+      // Note→DNA suggestion: their note distilled into a proposed avoid rule
+      // and/or preference. Confirm-first — nothing is written until accepted.
+      if (data.dna_suggestion) {
+        setDnaSuggestion(data.dna_suggestion)
+        setAvoidRuleState('pending')
+        setPreferenceState('pending')
+      }
       // Immediate retry: regenerate the same piece, steered by what they flagged.
       // (correction is truthy here, so handleGenerate won't clear the card above.)
       if (thenRegenerate) handleGenerate(correction)
@@ -423,6 +444,71 @@ export default function GeneratePage() {
       setApproveError(err instanceof Error ? err.message : 'Could not save your feedback')
     } finally {
       setRejecting(false)
+    }
+  }
+
+  // ─── Note→DNA suggestion responses ────────────────────────────
+
+  // Accept the distilled avoid rule: append it to the Brand DNA avoid list via
+  // the existing read→modify→PUT editing path (the same one /dna uses), so the
+  // write is normalized server-side like every other DNA write.
+  async function addAvoidRule() {
+    const rule = dnaSuggestion?.avoid_rule
+    if (!rule || avoidRuleState === 'adding' || avoidRuleState === 'added') return
+    setAvoidRuleState('adding')
+    try {
+      const meta = await (await fetch('/api/me')).json()
+      const dnaRes = await fetch(`/api/brand-dna?workspace_id=${meta.workspace_id}&persona_id=${meta.persona_id}`)
+      if (!dnaRes.ok) throw new Error()
+      const { brand_dna: sections } = await dnaRes.json()
+      if (!sections) throw new Error()
+
+      const avoid: string[] = Array.isArray(sections.avoid) ? sections.avoid : []
+      if (avoid.includes(rule)) {
+        setAvoidRuleState('added')
+        return
+      }
+      // The normalizer caps the avoid list at 20 items and would silently drop
+      // an overflow append — surface that instead of pretending it saved.
+      if (avoid.length >= 20) throw new Error('full')
+
+      const putRes = await fetch('/api/brand-dna', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workspace_id: meta.workspace_id,
+          persona_id: meta.persona_id,
+          sections: { ...sections, avoid: [...avoid, rule] },
+        }),
+      })
+      if (!putRes.ok) throw new Error()
+      setAvoidRuleState('added')
+    } catch {
+      setAvoidRuleState('error')
+    }
+  }
+
+  // Accept/dismiss the distilled preference — same suggested→active/closed
+  // contexts flow as every other rule suggestion.
+  async function respondToPreference(accept: boolean) {
+    const pref = dnaSuggestion?.preference
+    if (!pref || preferenceState === 'adding') return
+    setPreferenceState('adding')
+    try {
+      const meta = await (await fetch('/api/me')).json()
+      const res = await fetch('/api/contexts', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: pref.id,
+          workspace_id: meta.workspace_id,
+          status: accept ? 'active' : 'closed',
+        }),
+      })
+      if (!res.ok) throw new Error()
+      setPreferenceState(accept ? 'added' : 'dismissed')
+    } catch {
+      setPreferenceState('pending')
     }
   }
 
@@ -460,6 +546,9 @@ export default function GeneratePage() {
     setShowVoiceCheckDetails(false)
     setRuleSuggestion(null)
     setRuleSuggestionState('pending')
+    setDnaSuggestion(null)
+    setAvoidRuleState('pending')
+    setPreferenceState('pending')
     setRejected(false)
     setShowRejectPanel(false)
     setRejectReasons([])
@@ -745,6 +834,83 @@ export default function GeneratePage() {
                     </button>
                   </div>
                 </>
+              )}
+            </div>
+          )}
+
+          {/* Note→DNA suggestion — distilled from their rejection note */}
+          {dnaSuggestion && (
+            (dnaSuggestion.avoid_rule && avoidRuleState !== 'dismissed') ||
+            (dnaSuggestion.preference && preferenceState !== 'dismissed')
+          ) && (
+            <div className="mb-4 px-4 py-3 bg-[#FAFAFF] border border-[#534AB7]/20 rounded-lg text-sm space-y-3">
+              <p className="text-xs font-medium text-gray-500">From your feedback — make it permanent?</p>
+
+              {dnaSuggestion.avoid_rule && avoidRuleState !== 'dismissed' && (
+                <div>
+                  {avoidRuleState === 'added' ? (
+                    <p className="text-[#534AB7] text-xs flex items-center gap-2">
+                      <span>✓</span>
+                      <span>Added to your things-to-avoid list — every future draft is checked against it.</span>
+                    </p>
+                  ) : (
+                    <>
+                      <p className="text-xs text-gray-400 mb-1">Add to your things-to-avoid list:</p>
+                      <p className="text-sm text-gray-800 mb-2">&ldquo;{dnaSuggestion.avoid_rule}&rdquo;</p>
+                      {avoidRuleState === 'error' && (
+                        <p className="text-xs text-red-600 mb-2">Couldn&apos;t save it — you can also add it manually on your Brand DNA page.</p>
+                      )}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={addAvoidRule}
+                          disabled={avoidRuleState === 'adding'}
+                          className="px-3 py-1.5 bg-[#534AB7] text-white rounded-lg text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+                        >
+                          {avoidRuleState === 'adding' ? 'Adding…' : 'Add to avoid list'}
+                        </button>
+                        <button
+                          onClick={() => setAvoidRuleState('dismissed')}
+                          disabled={avoidRuleState === 'adding'}
+                          className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                        >
+                          No thanks
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {dnaSuggestion.preference && preferenceState !== 'dismissed' && (
+                <div>
+                  {preferenceState === 'added' ? (
+                    <p className="text-[#534AB7] text-xs flex items-center gap-2">
+                      <span>✓</span>
+                      <span>Saved as a standing preference — every future piece will follow it.</span>
+                    </p>
+                  ) : (
+                    <>
+                      <p className="text-xs text-gray-400 mb-1">You said you&apos;d rather have — make it a standing preference:</p>
+                      <p className="text-sm text-gray-800 mb-2">&ldquo;{dnaSuggestion.preference.content}&rdquo;</p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => respondToPreference(true)}
+                          disabled={preferenceState === 'adding'}
+                          className="px-3 py-1.5 bg-[#534AB7] text-white rounded-lg text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+                        >
+                          {preferenceState === 'adding' ? 'Saving…' : 'Make it a preference'}
+                        </button>
+                        <button
+                          onClick={() => respondToPreference(false)}
+                          disabled={preferenceState === 'adding'}
+                          className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                        >
+                          No thanks
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               )}
             </div>
           )}
