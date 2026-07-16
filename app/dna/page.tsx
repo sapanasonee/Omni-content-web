@@ -42,10 +42,6 @@ export default function DNAPage() {
   const [savingDNA, setSavingDNA] = useState(false)
   const [dnaError, setDnaError] = useState<string | null>(null)
 
-  // Recurring correctives derived from "I don't like this" rejections — the
-  // directives currently auto-steering every generation for this persona.
-  const [correctives, setCorrectives] = useState<string[]>([])
-
   // Standing rules
   const [rules, setRules] = useState<Rule[]>([])
   const [showAdd, setShowAdd] = useState(false)
@@ -66,10 +62,9 @@ export default function DNAPage() {
         setWorkspaceId(meta.workspace_id)
         setPersonaId(meta.persona_id)
 
-        const [dnaRes, rulesRes, feedbackRes] = await Promise.all([
+        const [dnaRes, rulesRes] = await Promise.all([
           fetch(`/api/brand-dna?workspace_id=${meta.workspace_id}&persona_id=${meta.persona_id}`),
           fetch(`/api/contexts?workspace_id=${meta.workspace_id}&persona_id=${meta.persona_id}&scope=permanent&status=active`),
-          fetch(`/api/feedback?workspace_id=${meta.workspace_id}&persona_id=${meta.persona_id}`),
         ])
 
         if (dnaRes.ok) {
@@ -81,11 +76,6 @@ export default function DNAPage() {
         if (rulesRes.ok) {
           const r = await rulesRes.json()
           setRules(r.contexts || [])
-        }
-
-        if (feedbackRes.ok) {
-          const f = await feedbackRes.json()
-          setCorrectives(f.correctives || [])
         }
       } catch (err) {
         console.error('Failed to load Brand DNA:', err)
@@ -600,25 +590,6 @@ export default function DNAPage() {
             </section>
             )
           })()}
-
-          {/* Currently correcting — recurring rejection signal */}
-          {correctives.length > 0 && (
-            <section className="border border-[#534AB7]/20 rounded-xl p-5 bg-[#FAFAFF]">
-              <p className="text-xs font-medium text-[#534AB7] mb-1">What we&apos;re currently correcting</p>
-              <p className="text-xs text-gray-400 mb-3">
-                You&apos;ve rejected drafts for these often enough that we now steer every
-                new generation to fix them. They fade on their own as newer drafts land well.
-              </p>
-              <ul className="space-y-1.5">
-                {correctives.map((c, i) => (
-                  <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
-                    <span className="text-[#534AB7] mt-0.5">→</span>
-                    <span>{c}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
 
           {/* Avoid list */}
           {brandDNA.avoid.length > 0 && (

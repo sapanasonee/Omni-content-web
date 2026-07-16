@@ -68,8 +68,12 @@ export default function GeneratePage() {
   const [voiceCheck, setVoiceCheck] = useState<VoiceCheck | null>(null)
   const [showVoiceCheckDetails, setShowVoiceCheckDetails] = useState(false)
 
-  // Rule suggestion state (diff→rulebook)
-  const [ruleSuggestion, setRuleSuggestion] = useState<{ id: string; content: string } | null>(null)
+  // Rule suggestion state. Two sources feed this same card: the edit-rulebook
+  // (after approve) and the rejection recurrence loop (after "I don't like
+  // this" crosses the threshold). `heading` distinguishes their copy — absent
+  // for edit-derived suggestions, set to the "you've rejected N drafts…" line
+  // for rejection-derived ones.
+  const [ruleSuggestion, setRuleSuggestion] = useState<{ id: string; content: string; heading?: string } | null>(null)
   const [ruleSuggestionState, setRuleSuggestionState] = useState<'pending' | 'accepting' | 'accepted' | 'dismissed'>('pending')
 
   // Approve state
@@ -192,6 +196,12 @@ export default function GeneratePage() {
     setShowRejectPanel(false)
     setRejectReasons([])
     setRejectNote('')
+    // A fresh, unsteered generation clears any stale suggestion card. A
+    // rejection-retry (correction present) keeps the suggestion just surfaced.
+    if (!correction) {
+      setRuleSuggestion(null)
+      setRuleSuggestionState('pending')
+    }
 
     try {
       const metaRes = await fetch('/api/me')
@@ -400,7 +410,14 @@ export default function GeneratePage() {
       if (!res.ok) throw new Error(data.error || 'Could not save your feedback')
       setRejected(true)
       setShowRejectPanel(false)
+      // Recurrence suggestion: this reason has now been rejected enough times to
+      // propose as a standing rule. Surface the same card the edit-rulebook uses.
+      if (data.rule_suggestion) {
+        setRuleSuggestion(data.rule_suggestion)
+        setRuleSuggestionState('pending')
+      }
       // Immediate retry: regenerate the same piece, steered by what they flagged.
+      // (correction is truthy here, so handleGenerate won't clear the card above.)
       if (thenRegenerate) handleGenerate(correction)
     } catch (err) {
       setApproveError(err instanceof Error ? err.message : 'Could not save your feedback')
@@ -709,7 +726,7 @@ export default function GeneratePage() {
                 </p>
               ) : (
                 <>
-                  <p className="text-xs font-medium text-gray-500 mb-1">Noticed a pattern in your edits</p>
+                  <p className="text-xs font-medium text-gray-500 mb-1">{ruleSuggestion.heading || 'Noticed a pattern in your edits'}</p>
                   <p className="text-sm text-gray-800 mb-2.5">&ldquo;{ruleSuggestion.content}&rdquo;</p>
                   <div className="flex gap-2">
                     <button

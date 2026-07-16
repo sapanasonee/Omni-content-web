@@ -7,7 +7,6 @@ import { runLinter, runLLMCritic, reviseDraft } from '@/lib/critic'
 import { requireWorkspaceOwnership, requirePersonaInWorkspace, isUuid } from '@/lib/auth-guard'
 import { INPUT_LIMITS, rejectOversized } from '@/lib/input-limits'
 import { readGoodSamples } from '@/lib/brand-dna-schema'
-import { recurringCorrectives, REJECTION_WINDOW, type StoredRejection } from '@/lib/rejection-feedback'
 
 const FORMAT_INSTRUCTIONS: Record<ContentFormat, string> = {
   linkedin: 'LinkedIn post. Max 1300 characters. Short paragraphs. Max 4 hashtags at the end only. Start with a hook. End with insight or question.',
@@ -257,35 +256,6 @@ ${approvedExamples.map((ex, i) => `--- Example ${i + 1} ---\n${ex}`).join('\n\n'
 `
         : ''
 
-    // Recurrence auto-steer: reasons this persona has rejected often enough to
-    // count as a systematic blind spot get turned into standing corrective
-    // directives injected into this (and every) generation. Non-fatal — a query
-    // failure just means no correctives this pass, never a broken generation.
-    let recurringBlock = ''
-    try {
-      const { data: rejRows } = await supabase
-        .from('content_pieces')
-        .select('resolved_context')
-        .eq('workspace_id', workspace_id)
-        .eq('persona_id', persona_id)
-        .eq('status', 'archived')
-        .order('created_at', { ascending: false })
-        .limit(REJECTION_WINDOW)
-
-      const rejections = (rejRows || [])
-        .map(r => (r.resolved_context as { rejection?: StoredRejection } | null)?.rejection)
-        .filter((x): x is StoredRejection => !!x && typeof x === 'object')
-
-      const correctives = recurringCorrectives(rejections)
-      if (correctives.length > 0) {
-        recurringBlock = `\nRECURRING FRICTION — ${dna.identity.full_name} has repeatedly rejected past drafts for the following. Fix each one proactively; these are non-negotiable:
-${correctives.map(c => `- ${c}`).join('\n')}
-`
-      }
-    } catch (err) {
-      console.error('Recurring-friction load failed (non-fatal):', err)
-    }
-
     // One-shot retry corrective: when this request is a "regenerate, fixing
     // this" after a rejection, the client sends the reasons + note as a single
     // directive. It's per-request only (never persisted) — the persistent
@@ -331,7 +301,7 @@ ${dna.examples.bad ? `AVOID THIS STYLE:\n${dna.examples.bad}` : ''}
 ${ragBlock}
 AVOID RULES (hard stops):
 ${dna.avoid.join('\n')}
-${recurringBlock}
+
 ${contextSections ? contextSections + '\n\n' : ''}${UNIVERSAL_GUARDRAILS}
 
 FORMAT: ${FORMAT_INSTRUCTIONS[format as ContentFormat]}
