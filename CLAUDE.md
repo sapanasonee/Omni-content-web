@@ -188,6 +188,22 @@ Always `git checkout hardening-pass` and `git pull` before starting work.
     unreviewed proposal blocks re-distillation (no churn); accept/dismiss both
     clear it and the next proposal needs 5 fresh approvals. Declared DNA stays
     authoritative; observed supplements beside it.
+18. **Activation-draft 👍/👎**: see Known gaps — `/api/activation-feedback`.
+19. **Comment generation** (`/comments` page, `/api/comment`,
+    `lib/comment-goals.ts`): paste a post → pick a goal (insight / experience /
+    sharp question / push back / amplify) + optional angle → ONE Flash call
+    returns 3 differently-angled comment options in the user's voice, each
+    linted (minus the too-short heuristic — short is correct for comments).
+    First consumer of the Observed Voice `stances`. Deliberately STATELESS in
+    v1: options are copied, nothing stored — keeps comments out of
+    content_pieces (no schema risk on the untracked live DB, and comments must
+    never become long-form RAG exemplars). Counts as a generation (same atomic
+    quota RPC, no activation exemption). A comment memory/learning loop is a
+    deliberate future add, not a side effect.
+20. **Corporate-jargon tells**: `leverage` + `synergy` (word-form regexes) in
+    `lib/ai-tells.ts` after "leverage" appeared in a live generation, plus a
+    jargon line in the generation guardrails; pinned by must-flag samples
+    031–033.
 
 ## Schema / migrations
 

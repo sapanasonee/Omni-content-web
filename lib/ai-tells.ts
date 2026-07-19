@@ -86,6 +86,20 @@ export const AI_TELLS: AITell[] = [
     note: 'dramatic reveal colon',
   },
 
+  // ── Corporate jargon ─────────────────────────────────────────────────────
+  {
+    id: 'leverage',
+    match: '\\bleverag(e|es|ed|ing)\\b',
+    isRegex: true,
+    note: "corporate jargon — humans say 'use'",
+  },
+  {
+    id: 'synergy',
+    match: '\\bsynerg(y|ies|istic)\\b',
+    isRegex: true,
+    note: 'corporate jargon with no concrete meaning',
+  },
+
   // ── Add your own below (from real content-review experience) ─────────────
   // { id: 'delve', match: 'delve', note: 'nobody says delve' },
 ]

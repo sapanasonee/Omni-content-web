@@ -150,6 +150,21 @@
       "id": "flag-030",
       "expect": ["fast-paced-world", "heres-the-truth"],
       "text": "In today's fast-paced world everyone is chasing productivity hacks. Here's the truth: the hack is doing the same important thing every day for a year."
+    },
+    {
+      "id": "flag-031",
+      "expect": ["leverage"],
+      "text": "Founders who leverage their existing networks close their first ten customers twice as fast as those who start cold. Your warm intros are an asset."
+    },
+    {
+      "id": "flag-032",
+      "expect": ["leverage"],
+      "text": "We leveraged AI to streamline our content pipeline and the results speak for themselves. Output doubled in a quarter with the same team size."
+    },
+    {
+      "id": "flag-033",
+      "expect": ["synergy"],
+      "text": "This partnership creates real synergy between our platforms, and customers on both sides will benefit from the combined offering starting next month."
     }
   ]
 }

@@ -23,6 +23,7 @@ UNIVERSAL QUALITY GUARDRAILS — apply to every generation without exception:
 - Never use parallel contrast: "It's not X, it's Y" or "This isn't X, this is Y"
 - Never use dramatic reveal colons: "That's when it hit me:", "Here's the truth:"
 - Never announce vulnerability before showing it: "I'll be honest", "If I'm being honest"
+- Never use corporate jargon: "leverage", "synergy", "utilize", "circle back" — say the plain word instead
 - Maximum one colon used for dramatic effect per piece
 - Active voice always. Passive voice is an AI tell.
 - Never add meta-commentary — output only the content itself

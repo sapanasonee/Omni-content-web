@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import type { Workspace, Persona } from '@/lib/types'
 import {
   PenLine,
+  MessageSquare,
   Library,
   Dna,
   LayoutDashboard,
@@ -25,6 +26,7 @@ interface SidebarProps {
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
   { href: '/generate', label: 'Generate', icon: PenLine },
+  { href: '/comments', label: 'Comments', icon: MessageSquare },
   { href: '/library', label: 'Library', icon: Library },
   { href: '/dna', label: 'Brand DNA', icon: Dna },
 ]
