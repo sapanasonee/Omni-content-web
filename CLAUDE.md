@@ -276,10 +276,15 @@ error, check the live schema before assuming the code is wrong.
   to `lib/ai-tells.ts` or the critic prompt.** The must-pass set is synthetic
   seed data — replace/augment with the user's real posts over time (that's the
   real wedge protection), and add a must-flag entry for every new tell.
-- **Early-access / "first 10 founders" offer**: no enforced cap exists (no
-  billing, no waitlist counter). Either commit to something crediblly scarce
-  without needing billing (founding-member status, locked-in pricing later)
-  or build a trivial signup counter — decide before publicizing the offer.
+- **Early-access offer** — decided & implemented via `/pricing`:
+  founding-member framing (free during early access + locked-in rate at
+  launch), which is credible without billing infrastructure. Paid tiers
+  (Studio/Agency) are shown as coming-soon/waitlist routing to Calendly —
+  NEVER as purchasable, since no billing exists. The Studio "$29/mo planned"
+  figure is a PLACEHOLDER constant at the top of `app/pricing/page.tsx`
+  (`PLANNED_STUDIO_PRICE`) pending a real pricing decision — confirm or
+  change it before driving traffic. The founding-member promise ("keep a
+  locked-in rate") is now public copy — honor it when billing ships.
 - **Two Brand DNA copies historically existed** — resolved (see #4 above) but
   if any other page/route is ever found reading `personas.brand_dna` directly,
   that's a regression, fix it to use `/api/brand-dna`.

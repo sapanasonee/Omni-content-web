@@ -56,12 +56,20 @@ export default function Home() {
           <div className="w-7 h-7 bg-[#534AB7] rounded-lg" />
           <span className="text-sm font-bold">Vowwl</span>
         </div>
-        <Link
-          href="/login"
-          className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
-        >
-          Sign in
-        </Link>
+        <div className="flex items-center gap-5">
+          <Link
+            href="/pricing"
+            className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            Pricing
+          </Link>
+          <Link
+            href="/login"
+            className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            Sign in
+          </Link>
+        </div>
       </nav>
 
       <Hero />
@@ -131,7 +139,12 @@ export default function Home() {
             <div className="w-5 h-5 bg-[#534AB7] rounded-md" />
             <span className="text-xs font-semibold text-gray-700">Vowwl</span>
           </div>
-          <p className="text-xs text-gray-400">© {new Date().getFullYear()} Vowwl · vowwl.com</p>
+          <div className="flex items-center gap-4">
+            <Link href="/pricing" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
+              Pricing
+            </Link>
+            <p className="text-xs text-gray-400">© {new Date().getFullYear()} Vowwl · vowwl.com</p>
+          </div>
         </div>
       </footer>
 
