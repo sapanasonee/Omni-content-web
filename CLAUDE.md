@@ -242,11 +242,14 @@ error, check the live schema before assuming the code is wrong.
 - **Real publish-tracking**: nudge/streak use approval as a proxy. A "mark as
   posted" toggle would make it real and would also unlock the eval metric
   "% approved + posted within 48h" (see below).
-- **Activation-draft feedback loop**: no 👍/👎 "does this sound like you?" on
-  the 3 activation drafts yet. This is the direct measurement for "% who hit
-  'sounds like me' on draft #1" — the metric the original build plan called
-  out as *the* validation signal before adding more breadth. Small build,
-  high value — do this before anything else evals-related.
+- **Activation-draft feedback loop** — DONE. 👍/👎 "Sound like you?" on each
+  activation card (`/api/activation-feedback`), stored as
+  `resolved_context.activation_feedback = {sounds_like_me, at}` — changes
+  nothing about the piece lifecycle, purely the metric signal. Query the
+  validation metric with:
+  `resolved_context->'activation_feedback'->>'sounds_like_me'` on the
+  earliest pieces per persona. No aggregation dashboard yet — build one when
+  there are enough signups for the number to mean something.
 - **Golden-set eval script** — DONE (`npm run eval`). `scripts/eval-golden-set.ts`
   runs 30 must-flag + 30 must-pass samples (`eval/golden-set/*.json`) against
   `runLinter`; strict, free, CI-able (exit 1 on any miss). Must-flag samples

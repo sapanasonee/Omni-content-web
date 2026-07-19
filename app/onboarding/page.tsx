@@ -42,6 +42,9 @@ interface ActivationDraft {
   approving: boolean
   approved: boolean
   violations: string[] | null
+  // "Does this sound like you?" — the activation validation signal.
+  feedback: 'yes' | 'no' | null
+  feedbackBusy: boolean
 }
 
 function ActivationDrafts({
@@ -79,6 +82,8 @@ function ActivationDrafts({
       approving: false,
       approved: false,
       violations: null,
+      feedback: null,
+      feedbackBusy: false,
     })))
 
     targets.forEach((t, idx) => runGeneration(idx, t.value))
@@ -167,6 +172,32 @@ function ActivationDrafts({
     }
   }
 
+  // "Does this sound like you?" — the direct measurement for the product's
+  // core validation metric (% of new users who hit "sounds like me" on their
+  // first drafts). Lightweight reaction, independent of Approve; a failed
+  // save just resets the buttons — never blocks the activation flow.
+  async function sendSoundsFeedback(idx: number, soundsLikeMe: boolean) {
+    const draft = drafts[idx]
+    if (!draft?.pieceId || draft.feedbackBusy) return
+    patchDraft(idx, { feedbackBusy: true })
+    try {
+      const res = await fetch('/api/activation-feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content_piece_id: draft.pieceId,
+          workspace_id: workspaceId,
+          persona_id: personaId,
+          sounds_like_me: soundsLikeMe,
+        }),
+      })
+      if (!res.ok) throw new Error()
+      patchDraft(idx, { feedbackBusy: false, feedback: soundsLikeMe ? 'yes' : 'no' })
+    } catch {
+      patchDraft(idx, { feedbackBusy: false })
+    }
+  }
+
   return (
     <div className="min-h-screen bg-white py-12 px-4">
       <div className="max-w-4xl mx-auto space-y-8">
@@ -201,6 +232,36 @@ function ActivationDrafts({
               </div>
               {draft.status === 'done' && (
                 <div className="px-4 py-3 border-t border-gray-100">
+                  {/* Sounds-like-you reaction — the activation validation signal */}
+                  {draft.feedback === null ? (
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-xs text-gray-500">Sound like you?</p>
+                      <div className="flex gap-1.5">
+                        <button
+                          onClick={() => sendSoundsFeedback(idx, true)}
+                          disabled={draft.feedbackBusy || !draft.pieceId}
+                          className="px-2.5 py-1 rounded-lg text-sm border border-gray-200 hover:border-[#534AB7] hover:bg-[#FAFAFF] transition-colors disabled:opacity-40"
+                          aria-label="Yes, this sounds like me"
+                        >
+                          👍
+                        </button>
+                        <button
+                          onClick={() => sendSoundsFeedback(idx, false)}
+                          disabled={draft.feedbackBusy || !draft.pieceId}
+                          className="px-2.5 py-1 rounded-lg text-sm border border-gray-200 hover:border-gray-400 transition-colors disabled:opacity-40"
+                          aria-label="No, this doesn't sound like me"
+                        >
+                          👎
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="mb-2 text-xs text-gray-500">
+                      {draft.feedback === 'yes'
+                        ? '👍 Great — approve it and it becomes brand memory.'
+                        : '👎 Noted — skip approving this one; your voice sharpens as you use Vowwl.'}
+                    </p>
+                  )}
                   {draft.violations && !draft.approved && (
                     <div className="mb-2 text-xs text-amber-700 bg-amber-50 rounded-lg px-2.5 py-1.5">
                       Quality flags: {draft.violations.slice(0, 2).join('; ')}
