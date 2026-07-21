@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import type { BrandDNA } from '@/lib/types'
 import { normalizeSections } from '@/lib/brand-dna-schema'
 import { evaluateSignupEmail, isExemptExistingAccount } from '@/lib/signup-policy'
+import { sendFounderAlert } from '@/lib/founder-alert'
 
 function getBucket() {
   const storage = new Storage({ projectId: process.env.GCP_PROJECT_ID })
@@ -139,7 +140,22 @@ export async function POST(request: Request) {
       },
     })
 
-    // 9. Return success
+    // 9. Permanent new-user founder alert. This is the durable "genuinely new
+    //    user" signal (a workspace was just created behind auth + the
+    //    disposable-email gate) — distinct from the temporary every-login alert
+    //    in /api/notify-signin, and NOT time-boxed. Best-effort and non-fatal:
+    //    a mail failure must never fail an onboarding that already succeeded.
+    await sendFounderAlert(
+      `[Vowwl] New user onboarded — ${data.identity.full_name}`,
+      `A new user just finished onboarding and has a live workspace.\n\n` +
+        `Name:     ${data.identity.full_name}\n` +
+        `Email:    ${user.email || '(unknown)'}\n` +
+        `Role:     ${data.identity.role}\n` +
+        `Industry: ${data.identity.industry}\n` +
+        `Time:     ${new Date().toISOString()}\n`,
+    )
+
+    // 10. Return success
     return NextResponse.json({
       success: true,
       workspace_id: workspace.id,

@@ -1,22 +1,18 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { Resend } from 'resend'
+import { sendFounderAlert } from '@/lib/founder-alert'
 
-// Temporary founder-alert on every sign-in-link request (early-access
-// engagement tracking). Called best-effort from the login form; it NEVER
-// blocks login and NEVER tells the requester anything (the New/Returning label
-// goes only to the founder inbox, so this can't be used to enumerate accounts).
+// Temporary founder-alert on EVERY sign-in-link request (early-access
+// engagement tracking — includes returning users). Called best-effort from the
+// login form; it NEVER blocks login and NEVER tells the requester anything (the
+// New/Returning label goes only to the founder inbox, so this can't be used to
+// enumerate accounts).
 //
-// Self-expiring: after NOTIFY_UNTIL the route no-ops, so the alerts stop on
-// their own without a redeploy. Extend the date or delete this route when the
-// tracking window is over.
+// Self-expiring: after NOTIFY_UNTIL the route no-ops, so the every-login alerts
+// stop on their own without a redeploy. The PERMANENT new-user alert lives in
+// /api/onboarding (fires once per genuinely-new user, not time-boxed) — that's
+// the one that keeps going after this window closes.
 const NOTIFY_UNTIL = new Date('2026-08-21T23:59:59Z')
-const NOTIFY_TO = process.env.NOTIFY_TO || 'spnsn9@gmail.com'
-// Must be an address on a domain verified in Resend. Until vowwl.com is
-// verified, Resend's shared 'onboarding@resend.dev' sender works but only
-// delivers to the Resend account owner's own email — fine for this founder
-// alert. Override with NOTIFY_FROM once vowwl.com is verified.
-const NOTIFY_FROM = process.env.NOTIFY_FROM || 'Vowwl <onboarding@resend.dev>'
 
 export async function POST(request: Request) {
   try {
@@ -39,27 +35,14 @@ export async function POST(request: Request) {
       console.error('record_login threw (non-fatal):', err)
     }
 
-    // Founder alert. No-op (with a warning) if Resend isn't configured, so the
-    // feature degrades cleanly rather than 500-ing the login flow.
-    if (process.env.RESEND_API_KEY) {
-      try {
-        const resend = new Resend(process.env.RESEND_API_KEY)
-        await resend.emails.send({
-          from: NOTIFY_FROM,
-          to: NOTIFY_TO,
-          subject: `[Vowwl] ${label} user signing in — ${clean}`,
-          text:
-            `A ${label.toLowerCase()} user just requested a sign-in link.\n\n` +
-            `Email:  ${clean}\n` +
-            `Type:   ${label}\n` +
-            `Time:   ${new Date().toISOString()}\n`,
-        })
-      } catch (err) {
-        console.error('Sign-in alert send failed (non-fatal):', err)
-      }
-    } else {
-      console.warn('notify-signin: RESEND_API_KEY not set — alert skipped')
-    }
+    // Founder alert (shared best-effort sender; no-ops if Resend unconfigured).
+    await sendFounderAlert(
+      `[Vowwl] ${label} user signing in — ${clean}`,
+      `A ${label.toLowerCase()} user just requested a sign-in link.\n\n` +
+        `Email:  ${clean}\n` +
+        `Type:   ${label}\n` +
+        `Time:   ${new Date().toISOString()}\n`,
+    )
 
     return NextResponse.json({ ok: true })
   } catch {

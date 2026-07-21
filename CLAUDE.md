@@ -205,13 +205,20 @@ Always `git checkout hardening-pass` and `git pull` before starting work.
     jargon line in the generation guardrails; pinned by must-flag samples
     031–033.
 
-## Temporary: sign-in alerts (early-access engagement tracking)
+## Founder sign-in / new-user alerts
 
-Founder-facing, time-boxed. Emails `spnsn9@gmail.com` on every sign-in-link
-request with a New/Returning label. **Self-expires** at `NOTIFY_UNTIL`
-(2026-08-21) in `app/api/notify-signin/route.ts` — after that the route
-no-ops; extend the date or delete the route + `fetch('/api/notify-signin')`
-call in the login page when done.
+Two alerts to `spnsn9@gmail.com`, both via the shared best-effort
+`lib/founder-alert.ts` (`sendFounderAlert`), both non-fatal:
+
+- **Permanent — new-user activation** (`app/api/onboarding/route.ts`): fires
+  ONCE per genuinely-new user when they finish onboarding (workspace created,
+  behind auth + the disposable gate). Carries name/email/role/industry. NOT
+  time-boxed — this is the enduring "new signup" notification.
+- **Temporary — every sign-in-link request** (`app/api/notify-signin/route.ts`,
+  early-access engagement tracking, includes RETURNING users, New/Returning in
+  the subject). **Self-expires** at `NOTIFY_UNTIL` (2026-08-21) — after that
+  the route no-ops; the permanent onboarding alert keeps going. Remove the
+  route + the `fetch('/api/notify-signin')` call in the login page when done.
 
 Requires, or it silently degrades (never breaks login):
 - **`RESEND_API_KEY`** in Cloud Run env (the `resend` dep was previously
