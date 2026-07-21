@@ -320,6 +320,12 @@ error, check the live schema before assuming the code is wrong.
   (`PLANNED_STUDIO_PRICE`) pending a real pricing decision — confirm or
   change it before driving traffic. The founding-member promise ("keep a
   locked-in rate") is now public copy — honor it when billing ships.
+  Studio's "get on the list" is an inline email waitlist (`app/pricing/
+  WaitlistForm.tsx` → `POST /api/waitlist` → sealed `waitlist` table via
+  `join_waitlist` RPC + founder alert), NOT a Calendly call. Agency stays a
+  call (bespoke pricing). Needs `20260721_waitlist.sql` run for durable
+  storage; until then it degrades to founder-alert-only (emails still reach
+  the inbox). Pull the list as service role from the SQL editor.
 - **Two Brand DNA copies historically existed** — resolved (see #4 above) but
   if any other page/route is ever found reading `personas.brand_dna` directly,
   that's a regression, fix it to use `/api/brand-dna`.

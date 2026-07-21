@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import WaitlistForm from './WaitlistForm'
 
 export const metadata: Metadata = {
   title: 'Pricing — Vowwl',
@@ -26,6 +27,7 @@ const TIERS = [
     name: 'Founding member',
     badge: 'Available now',
     live: true,
+    waitlist: null as string | null,
     price: 'Free',
     priceNote: 'during early access — no credit card',
     blurb:
@@ -47,6 +49,9 @@ const TIERS = [
     name: 'Studio',
     badge: 'Coming soon',
     live: false,
+    // Waitlist email capture instead of a call — low-friction for a
+    // not-yet-purchasable tier. Agency stays a call (bespoke pricing).
+    waitlist: 'studio' as string | null,
     price: PLANNED_STUDIO_PRICE,
     priceNote: '/month · planned launch pricing',
     blurb:
@@ -64,6 +69,7 @@ const TIERS = [
     name: 'Agency',
     badge: 'Planned',
     live: false,
+    waitlist: null as string | null,
     price: "Let's talk",
     priceNote: 'shaped with early agency partners',
     blurb:
@@ -172,7 +178,9 @@ export default function PricingPage() {
                 ))}
               </ul>
 
-              {tier.cta.external ? (
+              {tier.waitlist ? (
+                <WaitlistForm tier={tier.waitlist} />
+              ) : tier.cta.external ? (
                 <a
                   href={tier.cta.href}
                   target="_blank"
