@@ -3,12 +3,18 @@
 import { Suspense, useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { evaluateSignupEmail } from '@/lib/signup-policy'
+
+const CALENDLY_URL = 'https://calendly.com/sonisapna45/30min'
 
 function LoginForm() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Set when the email is a disposable/temporary inbox — we stop before sending
+  // a magic link and explain why, with a way to reach out anyway.
+  const [blockedReason, setBlockedReason] = useState<string | null>(null)
   const searchParams = useSearchParams()
 
   useEffect(() => {
@@ -21,18 +27,31 @@ function LoginForm() {
     e.preventDefault()
     setLoading(true)
     setError(null)
+    setBlockedReason(null)
 
-    // Deliberately NO signup-policy check here, even though this form is the
-    // visual front door for signups: login and signup share this one
-    // magic-link flow, and the client cannot know an account's creation date
-    // before sign-in — so a domain check here would also lock out
-    // grandfathered pre-policy accounts (the owner's testing accounts), which
-    // must never be blocked. The policy is enforced server-side at
-    // /api/onboarding and /api/voice-extract (see lib/signup-policy.ts),
-    // where the creation-date exemption CAN be evaluated. A disallowed new
-    // signup therefore gets an inert auth session that can't create a
-    // workspace or spend anything, and sees the policy message the moment it
-    // tries.
+    // Disposable/temporary inboxes are stopped HERE with a clear message,
+    // rather than silently getting a magic link that dead-ends at onboarding.
+    // evaluateSignupEmail only rejects burner domains + malformed addresses —
+    // Gmail and every work/personal domain still pass — so this does not
+    // reintroduce the grandfathered-account concern (those are on real
+    // domains). The server-side policy at /api/onboarding + /api/voice-extract
+    // remains the authoritative gate; this is the friendlier front door.
+    const verdict = evaluateSignupEmail(email)
+    if (!verdict.allowed) {
+      setBlockedReason(verdict.reason || 'Please use a valid work or personal email.')
+      setLoading(false)
+      return
+    }
+
+    // Best-effort founder alert (early-access engagement tracking). Fire and
+    // forget — it must never delay or block the magic link, and the requester
+    // learns nothing from it either way.
+    fetch('/api/notify-signin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    }).catch(() => {})
+
     const supabase = createClient()
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email,
@@ -81,6 +100,23 @@ function LoginForm() {
         {error && (
           <div className="px-3 py-2 rounded-md bg-red-50 border border-red-200 text-sm text-red-700">
             {error}
+          </div>
+        )}
+
+        {blockedReason && (
+          <div className="px-4 py-3 rounded-lg bg-amber-50 border border-amber-200 space-y-2.5">
+            <p className="text-sm text-amber-800">{blockedReason}</p>
+            <p className="text-xs text-amber-700">
+              Don&apos;t have a work email but want Vowwl? Grab a slot and we&apos;ll get you set up.
+            </p>
+            <a
+              href={CALENDLY_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block px-3 py-1.5 bg-[#534AB7] text-white rounded-lg text-xs font-medium hover:opacity-90 transition-opacity"
+            >
+              Book a quick call →
+            </a>
           </div>
         )}
 

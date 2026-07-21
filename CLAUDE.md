@@ -205,6 +205,34 @@ Always `git checkout hardening-pass` and `git pull` before starting work.
     jargon line in the generation guardrails; pinned by must-flag samples
     031–033.
 
+## Temporary: sign-in alerts (early-access engagement tracking)
+
+Founder-facing, time-boxed. Emails `spnsn9@gmail.com` on every sign-in-link
+request with a New/Returning label. **Self-expires** at `NOTIFY_UNTIL`
+(2026-08-21) in `app/api/notify-signin/route.ts` — after that the route
+no-ops; extend the date or delete the route + `fetch('/api/notify-signin')`
+call in the login page when done.
+
+Requires, or it silently degrades (never breaks login):
+- **`RESEND_API_KEY`** in Cloud Run env (the `resend` dep was previously
+  unused). Without it, alerts are skipped with a console warning.
+- A **verified Resend sender**. Default `NOTIFY_FROM` uses the shared
+  `onboarding@resend.dev`, which only delivers to the Resend account owner's
+  own inbox — fine for this founder alert. Set `NOTIFY_FROM` to a
+  `@vowwl.com` address once that domain is verified in Resend. `NOTIFY_TO`
+  overrides the recipient (default `spnsn9@gmail.com`).
+- The **`20260721_login_events.sql`** migration (run in SQL editor). New vs
+  Returning + the "how often they open the app" data come from this private
+  RLS-sealed table via the `record_login` SECURITY DEFINER RPC. "New" = first
+  login observed since tracking began (not brand-new account). Query it as
+  service role from the SQL editor for engagement analysis.
+
+Disposable emails are now ALSO blocked at the login screen (not just at
+onboarding): `evaluateSignupEmail` runs client-side, and a burner/malformed
+address gets a clear message + a Calendly "book a call" path instead of a
+dead-end magic link. Only disposable + malformed are blocked — Gmail and all
+work/personal domains still pass.
+
 ## Schema / migrations
 
 Two migration files exist under `supabase/migrations/` — **written this
