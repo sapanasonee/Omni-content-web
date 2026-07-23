@@ -37,7 +37,7 @@ export default function Hero() {
             The content engine for founders, directors, and future consultants
           </p>
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight leading-tight">
-            Your strategic insights.<br />Polished in 90 seconds.
+            Your strategic insights.<br />Polished in 2 minutes.
           </h1>
           <p className="mt-5 text-lg text-gray-500 max-w-xl mx-auto lg:mx-0">
             Stop wasting hours trying to prompt generic AI tools. Give us 2 minutes of your
