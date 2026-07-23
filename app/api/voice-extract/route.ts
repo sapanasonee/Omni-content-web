@@ -79,7 +79,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Recording too large' }, { status: 413 })
     }
 
-    const prompt = `Listen to this recording of a founder talking about themselves — who they are, what they believe, who they write for, and what most people in their space get wrong.
+    const prompt = `Listen to this recording of a founder talking about themselves — who they are, who they write for, what most people in their space get wrong, and what they love talking about.
 
 Extract the following. Where the recording doesn't cover a field, return an empty string or empty array — never invent.
 
@@ -96,7 +96,7 @@ Respond with ONLY this JSON, no prose:
   "audience_segments": ["up to 4 short audience labels"],
   "voice_description": "2-3 sentences of WRITING-voice guidance derived from how they think and what they emphasize — their convictions and perspective, NOT their speaking mannerisms",
   "tones": ["up to 3, chosen ONLY from: ${TONE_OPTIONS.join(', ')}"],
-  "topics": ["up to 6 short topic labels they clearly care about"]
+  "topics": ["up to 6 short topic labels covering what they said they love talking about, plus anything else they clearly care about"]
 }`
 
     const vertexAI = new VertexAI({
