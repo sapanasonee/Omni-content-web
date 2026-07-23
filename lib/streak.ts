@@ -47,27 +47,51 @@ export interface NudgeState {
   message: string | null
 }
 
+// The nudge re-engages users who've gone *quiet*. Approval is the publish
+// proxy, but "quiet" must also account for generation activity: someone
+// actively drafting this week clearly hasn't abandoned the product, so nagging
+// "your audience hasn't heard from you" at them reads as a bug. `lastActivityAt`
+// is the most recent content piece created (any status). If they've created
+// anything within their cadence window — and always within at least the last
+// week — we treat them as engaged and suppress the nudge.
 export function computeNudge(
   approvedAt: Date[],
   cadence: string | undefined,
+  lastActivityAt: Date | null = null,
   now = new Date(),
 ): NudgeState {
   const thresholdDays = CADENCE_THRESHOLD_DAYS[cadence || ''] ?? DEFAULT_THRESHOLD_DAYS
   const streakWeeks = computeStreakWeeks(approvedAt, now)
 
+  const DAY_MS = 24 * 3600_000
+  const daysSinceActivity = lastActivityAt
+    ? Math.floor((now.getTime() - lastActivityAt.getTime()) / DAY_MS)
+    : null
+  // Grace is at least a week so recent activity always silences the nudge,
+  // widening to the cadence window for less-frequent posters.
+  const activityGraceDays = Math.max(thresholdDays, 7)
+  const recentlyActive =
+    daysSinceActivity !== null && daysSinceActivity <= activityGraceDays
+
   if (approvedAt.length === 0) {
+    // Never approved. Only nudge someone who generated but then went quiet past
+    // the grace window — never a brand-new user (no activity at all; the
+    // dashboard empty state already guides them) and never an active drafter.
+    const nudge = daysSinceActivity !== null && !recentlyActive
     return {
       streakWeeks: 0,
       daysSinceLastApproval: null,
       thresholdDays,
-      nudge: true,
-      message: "Your audience hasn't heard from you yet. Your first approved piece starts the streak.",
+      nudge,
+      message: nudge
+        ? "You've got drafts but haven't approved one yet — approve a piece to start your streak."
+        : null,
     }
   }
 
   const last = Math.max(...approvedAt.map(d => d.getTime()))
-  const daysSince = Math.floor((now.getTime() - last) / (24 * 3600_000))
-  const nudge = daysSince > thresholdDays
+  const daysSince = Math.floor((now.getTime() - last) / DAY_MS)
+  const nudge = daysSince > thresholdDays && !recentlyActive
 
   return {
     streakWeeks,

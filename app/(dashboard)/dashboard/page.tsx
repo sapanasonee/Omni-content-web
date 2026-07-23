@@ -58,9 +58,16 @@ export default async function DashboardPage() {
     ? await loadCadence(workspace.id, persona.id)
     : undefined
 
+  // Most recent generation of any status — an actively-drafting user shouldn't
+  // be nudged for silence even before they approve anything.
+  const lastActivityAt = recentContent?.[0]?.created_at
+    ? new Date(recentContent[0].created_at as string)
+    : null
+
   const nudgeState = computeNudge(
     (approvals || []).map(a => new Date(a.approved_at as string)),
     cadence,
+    lastActivityAt,
   )
 
   return (

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { sendFounderAlert } from '@/lib/founder-alert'
+import { sendUserEmail } from '@/lib/email'
 
 // Public waitlist capture for not-yet-purchasable tiers on /pricing. No auth
 // (marketing page). Persists to the sealed waitlist table via the
@@ -32,6 +33,22 @@ export async function POST(request: Request) {
     await sendFounderAlert(
       `[Vowwl] New ${t} waitlist signup — ${clean}`,
       `Someone joined the ${t} waitlist.\n\nEmail: ${clean}\nTier:  ${t}\nTime:  ${new Date().toISOString()}\n`,
+    )
+
+    // Confirmation to the person who joined (best-effort). Note: with the
+    // default resend.dev sender this only reaches the Resend account owner —
+    // see lib/email.ts. Once NOTIFY_FROM is a verified @vowwl.com address it
+    // reaches real prospects.
+    const tierLabel = t.charAt(0).toUpperCase() + t.slice(1)
+    await sendUserEmail(
+      clean,
+      `You're on the Vowwl ${tierLabel} waitlist`,
+      `Hi,\n\n` +
+        `Thanks for your interest in Vowwl ${tierLabel} — you're on the waitlist. ` +
+        `We'll email you the moment it opens, and as an early sign-up you'll be first in line.\n\n` +
+        `In the meantime you can keep creating in your own voice on your current plan.\n\n` +
+        `Any questions? Just reply to this email and we'll get back to you.\n\n` +
+        `— The Vowwl team\n`,
     )
 
     return NextResponse.json({ ok: true })
