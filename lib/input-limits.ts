@@ -20,13 +20,14 @@ import { NextResponse } from 'next/server'
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const INPUT_LIMITS = {
-  // Brief-mode topic: a headline-sized ask. Trending topics prefill well
-  // under this; 500 leaves room for a wordy manual brief.
-  topic: 500,
+  // Brief-mode topic: the brief field invites context ("the more context you
+  // give, the better the output"), so it's not just a headline — 3k chars is
+  // ~500 words, room for a detailed brief while still bounding token cost.
+  topic: 3_000,
   // Describe-mode input: a paragraph or two describing the piece.
   description: 2_000,
   // Raw-mode input: the largest legitimate payload — voice-note transcripts
-  // and braindumps. A 90s spoken intro is ~1.5k chars; 20k covers even a
+  // and braindumps. A 2-min spoken intro is ~2k chars; 20k covers even a
   // long dictation several times over while capping the token blast radius.
   raw_input: 20_000,
   // A tone override is a phrase ("more playful, less formal"), not an essay.

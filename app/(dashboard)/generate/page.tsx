@@ -33,10 +33,15 @@ const FORMATS: { value: Format; label: string }[] = [
   { value: 'exec_brief', label: 'Exec Brief' },
 ]
 
-const MODES: { value: Mode; label: string; placeholder: string }[] = [
-  { value: 'brief', label: 'Brief', placeholder: 'What do you want to write about? Be specific — the more context you give, the better the output.' },
-  { value: 'raw', label: 'Raw input', placeholder: 'Paste your rough notes, bullet points, or draft. The system will shape it into your voice.' },
-  { value: 'describe', label: 'Describe', placeholder: 'Describe the feeling, situation, or idea you want to capture. Less structured than a brief.' },
+// `limit` mirrors INPUT_LIMITS in lib/input-limits.ts (topic / raw_input /
+// description). The server stays authoritative and rejects oversized input;
+// these client copies just power the live counter + maxLength so a user sees
+// the ceiling while typing instead of hitting a 400 on submit. Keep them in
+// sync if the server caps change.
+const MODES: { value: Mode; label: string; placeholder: string; limit: number }[] = [
+  { value: 'brief', label: 'Brief', placeholder: 'What do you want to write about? Be specific — the more context you give, the better the output.', limit: 3_000 },
+  { value: 'raw', label: 'Raw input', placeholder: 'Paste your rough notes, bullet points, or draft. The system will shape it into your voice.', limit: 20_000 },
+  { value: 'describe', label: 'Describe', placeholder: 'Describe the feeling, situation, or idea you want to capture. Less structured than a brief.', limit: 2_000 },
 ]
 
 export default function GeneratePage() {
@@ -648,13 +653,28 @@ export default function GeneratePage() {
         </div>
 
         {/* Input */}
-        <div className="flex-1 p-4">
+        <div className="flex-1 p-4 flex flex-col">
           <textarea
             value={input}
             onChange={e => setInput(e.target.value)}
             placeholder={currentMode.placeholder}
-            className="w-full h-full min-h-40 text-sm text-gray-800 placeholder-gray-400 resize-none focus:outline-none"
+            maxLength={currentMode.limit}
+            className="w-full flex-1 min-h-40 text-sm text-gray-800 placeholder-gray-400 resize-none focus:outline-none"
           />
+          <div className="flex justify-end pt-1">
+            <span
+              className={cn(
+                'text-xs tabular-nums',
+                input.length >= currentMode.limit
+                  ? 'text-red-500'
+                  : input.length >= currentMode.limit * 0.9
+                  ? 'text-amber-500'
+                  : 'text-gray-400',
+              )}
+            >
+              {input.length.toLocaleString()} / {currentMode.limit.toLocaleString()}
+            </span>
+          </div>
         </div>
 
         {/* Context section */}

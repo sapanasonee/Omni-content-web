@@ -4,7 +4,7 @@ import Hero from '@/components/marketing/Hero'
 const FEATURES = [
   {
     title: 'Voice-first onboarding',
-    body: 'Talk for 90 seconds about what you believe. Vowwl builds your brand profile from it, no forms-first friction.',
+    body: 'Talk for 2 minutes about what you believe. Vowwl builds your brand profile from it, no forms-first friction.',
   },
   {
     title: 'Trending in your niche',

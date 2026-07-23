@@ -8,7 +8,7 @@ import { evaluateSignupEmail, isExemptExistingAccount } from '@/lib/signup-polic
 // it is never stored as a writing exemplar, because spoken register would
 // teach the model to write like talk.
 
-// ~90s of opus audio is well under this; the ceiling just bounds abuse.
+// ~2 min of opus audio is well under this; the ceiling just bounds abuse.
 const MAX_AUDIO_BYTES = 15 * 1024 * 1024
 
 const ALLOWED_MIME = [
