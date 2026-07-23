@@ -32,7 +32,7 @@ const STEPS = [
   {
     n: '1',
     title: 'Say who you are',
-    body: 'Answer one question out loud: what do most people in your space get wrong? Vowwl drafts your profile from your own words.',
+    body: 'Answer three questions out loud: who you are, who you write for, and what most people in your space get wrong. Vowwl drafts your profile from your own words.',
   },
   {
     n: '2',
