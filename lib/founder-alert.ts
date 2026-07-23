@@ -8,11 +8,9 @@ import { Resend } from 'resend'
 // warning) when Resend isn't configured, so the whole feature degrades cleanly
 // rather than breaking login or onboarding.
 const NOTIFY_TO = process.env.NOTIFY_TO || 'spnsn9@gmail.com'
-// Must be an address on a domain verified in Resend. The shared
-// 'onboarding@resend.dev' default only delivers to the Resend account owner's
-// own inbox — fine for a founder alert; set NOTIFY_FROM to a @vowwl.com address
-// once that domain is verified.
-const NOTIFY_FROM = process.env.NOTIFY_FROM || 'Vowwl <onboarding@resend.dev>'
+// vowwl.com is verified in Resend (DKIM/SPF/MX all green), so info@vowwl.com
+// is the default sender. NOTIFY_FROM still overrides it if ever needed.
+const NOTIFY_FROM = process.env.NOTIFY_FROM || 'Vowwl <info@vowwl.com>'
 
 export async function sendFounderAlert(subject: string, text: string): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
