@@ -603,7 +603,7 @@ export default function OnboardingPage() {
           <div>
             <h1 className="text-xl font-bold text-gray-900 mb-2">Start with your voice</h1>
             <p className="text-sm text-gray-500">
-              Talk for up to 90 seconds. Who are you? Who do you write for?
+              Talk for up to 90 seconds. Who are you? Who is your target audience?
               And — <span className="text-gray-700 font-medium">what do most people in your space get wrong?</span>
             </p>
             <p className="text-xs text-gray-400 mt-2">
