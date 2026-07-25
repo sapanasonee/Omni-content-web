@@ -974,7 +974,7 @@ export default function OnboardingPage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Paste the best piece of content you&apos;ve created
+                  Paste the best piece of content you&apos;ve created or you admire of others
                 </label>
                 <p className="text-xs text-gray-400 mb-3">
                   A LinkedIn post, email, or any writing that felt most like you.
