@@ -195,7 +195,11 @@ export default function GeneratePage() {
 
   // ─── Generate ─────────────────────────────────────────────────
 
-  async function handleGenerate(correction?: string) {
+  // `rejectedDraft` turns a retry into a revision: the route needs the text it
+  // is correcting, or it re-rolls the brief from scratch and everything good
+  // about the rejected draft is lost along with the part the user complained
+  // about. Only ever passed together with a correction.
+  async function handleGenerate(correction?: string, rejectedDraft?: string) {
     if (!input.trim()) return
     setLoading(true)
     setError(null)
@@ -239,6 +243,7 @@ export default function GeneratePage() {
           campaign_context_id: selectedCampaignId || undefined,
           one_time_context: oneTimeContext.trim() || undefined,
           correction: correction?.trim() || undefined,
+          rejected_draft: rejectedDraft?.trim() || undefined,
         }),
       })
 
@@ -410,9 +415,14 @@ export default function GeneratePage() {
 
   async function submitReject(thenRegenerate: boolean) {
     if (!contentPieceId || rejecting) return
-    // Snapshot the correction BEFORE we archive/regenerate, because
-    // handleGenerate clears the reason/note state as it starts a fresh run.
+    // Snapshot the correction AND the draft text BEFORE we archive/regenerate,
+    // because handleGenerate clears the reason/note state and blanks `output`
+    // as it starts a fresh run. The draft is what makes the retry a revision
+    // rather than a re-roll, so losing it here silently downgrades the feature.
+    // `output` (not the saved row) is deliberate: it is what the user was
+    // looking at when they hit reject, including any edits they made first.
     const correction = thenRegenerate ? buildRetryCorrection(rejectReasons, rejectNote) : ''
+    const draftUnderReview = thenRegenerate ? output : ''
     setRejecting(true)
     setApproveError(null)
     try {
@@ -447,7 +457,7 @@ export default function GeneratePage() {
       }
       // Immediate retry: regenerate the same piece, steered by what they flagged.
       // (correction is truthy here, so handleGenerate won't clear the card above.)
-      if (thenRegenerate) handleGenerate(correction)
+      if (thenRegenerate) handleGenerate(correction, draftUnderReview)
     } catch (err) {
       setApproveError(err instanceof Error ? err.message : 'Could not save your feedback')
     } finally {

@@ -151,6 +151,21 @@
       "id": "pass-035",
       "note": "near-miss: 'power' and 'potential' used concretely, outside the harness/unlock stock phrases",
       "text": "I underestimated the potential of our smallest customers. Two of them referred more business last year than our biggest logo ever did."
+    },
+    {
+      "id": "pass-036",
+      "note": "near-miss: plain 'not X, but Y' concession WITHOUT 'just' — this is the boundary that keeps not-just-but from eating honest hedging",
+      "text": "The rebuild was not painless, but it bought us two years of not apologizing for the load times."
+    },
+    {
+      "id": "pass-037",
+      "note": "near-miss: 'we're not' with a follow-up clause that does NOT re-assert a reframed version of it",
+      "text": "We're not hiring this quarter, and the four of us have never shipped faster or argued less about scope."
+    },
+    {
+      "id": "pass-038",
+      "note": "near-miss: 'not just' present but with no 'but' clause completing the escalation",
+      "text": "She rewrote the whole help centre, not just the three pages I asked her to look at, and support volume halved."
     }
   ]
 }

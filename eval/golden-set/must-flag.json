@@ -289,6 +289,34 @@
       "id": "flag-057",
       "expect": ["double-edged-sword"],
       "text": "Raising a large round is a double-edged sword, and most founders only find out which edge they got about eighteen months later."
+    },
+    {
+      "id": "flag-058",
+      "note": "second-person copula — the is/isn't patterns are blind to \"you're not\"",
+      "expect": ["arent-x-theyre-y"],
+      "text": "You're not just presenting data; you're telling the story of user friction, and that story is what actually moves a roadmap."
+    },
+    {
+      "id": "flag-059",
+      "expect": ["arent-x-theyre-y"],
+      "text": "The best hires we made are not the most credentialed, they're the ones who asked what was broken before they asked what the title was."
+    },
+    {
+      "id": "flag-060",
+      "note": "plural noun subject with \"aren't\" resolving to \"they're\"",
+      "expect": ["arent-x-theyre-y"],
+      "text": "Churned customers aren't a lagging indicator, they're the clearest product feedback you will ever get for free."
+    },
+    {
+      "id": "flag-061",
+      "note": "the \"not JUST X, but Y\" escalation — distinct from genuine concession, which keeps passing (see pass-004, pass-032)",
+      "expect": ["not-just-but"],
+      "text": "The challenge for a product team isn't just seeing the data, but interpreting the story underneath it well enough to act on it."
+    },
+    {
+      "id": "flag-062",
+      "expect": ["not-just-but"],
+      "text": "Good onboarding is not merely a tutorial, but the first argument you make for why the product deserves another ten minutes."
     }
   ]
 }

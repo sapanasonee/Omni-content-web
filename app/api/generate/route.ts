@@ -122,7 +122,7 @@ export async function POST(request: Request) {
       topic, raw_input, description,
       tone_override, generation_mode,
       campaign_context_id, one_time_context,
-      activation, correction
+      activation, correction, rejected_draft
     } = await request.json()
 
     if (!workspace_id || !persona_id || !format) {
@@ -157,6 +157,9 @@ export async function POST(request: Request) {
       ['tone_override', tone_override, INPUT_LIMITS.tone_override],
       ['one_time_context', one_time_context, INPUT_LIMITS.context_content],
       ['correction', correction, INPUT_LIMITS.correction],
+      // Model output being handed back for revision — same ceiling as a draft
+      // body edit, since that is exactly what it is.
+      ['rejected_draft', rejected_draft, INPUT_LIMITS.draft_body],
     ])
     if (oversized) return oversized
 
@@ -271,12 +274,50 @@ ${approvedExamples.map((ex, i) => `--- Example ${i + 1} ---\n${ex}`).join('\n\n'
     // this" after a rejection, the client sends the reasons + note as a single
     // directive. It's per-request only (never persisted) — the persistent
     // version is the recurring block above once a reason crosses the threshold.
-    const correctionBlock =
-      typeof correction === 'string' && correction.trim()
-        ? `\nTHE USER REJECTED YOUR PREVIOUS DRAFT OF THIS PIECE. Before anything else, fix this:
-${correction.trim()}
+    // When the client sends the draft that was rejected, the retry becomes a
+    // targeted REVISION instead of a fresh roll of the dice. Without the draft
+    // in the prompt the model cannot know what it is preserving, so a one-line
+    // complaint ("cite the source") regenerated a structurally different — and
+    // often worse — piece: the concrete specifics from the rejected draft were
+    // collateral damage nobody had asked to remove. Naming what to keep is the
+    // whole fix; the correction alone was never enough to steer a rewrite.
+    //
+    // The draft is a REVISION BASE, never an exemplar — it is model output the
+    // user just turned down, so it must not be presented as voice to imitate
+    // the way RAG exemplars and good_samples are.
+    const rejectedDraftText =
+      typeof rejected_draft === 'string' ? rejected_draft.trim() : ''
+    const correctionText =
+      typeof correction === 'string' ? correction.trim() : ''
+
+    const correctionBlock = !correctionText
+      ? ''
+      : rejectedDraftText
+        ? `
+THE USER REJECTED THE DRAFT BELOW. Revise it — do not start over.
+
+REJECTED DRAFT:
+"""
+${rejectedDraftText}
+"""
+
+WHAT WAS WRONG WITH IT:
+${correctionText}
+
+REVISION RULES:
+- Fix ONLY what is listed above. Everything else in the draft was acceptable.
+- Keep every concrete specific — numbers, examples, names, quoted phrases, the
+  opening image — unless that specific IS the thing being complained about.
+  Retreating into safe generalities is a failure, not a fix.
+- Keep the structure and length unless the complaint is about structure or length.
+- If the complaint asks for something you cannot do without inventing facts
+  (citing a source, adding a statistic, naming a study), do NOT invent one and
+  do NOT delete the surrounding point to dodge the problem. Rewrite the claim so
+  it stands on the user's own experience instead.
 `
-        : ''
+        : `\nTHE USER REJECTED YOUR PREVIOUS DRAFT OF THIS PIECE. Before anything else, fix this:
+${correctionText}
+`
 
     // Best-content samples the user pasted at onboarding (up to 3). Presented
     // as multiple exemplars so the model learns the range they like, not one

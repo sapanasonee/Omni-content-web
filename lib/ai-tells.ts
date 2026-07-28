@@ -70,6 +70,28 @@ export const AI_TELLS: AITell[] = [
     isRegex: true,
     note: 'parallel contrast with a named subject — same tell, different dress',
   },
+  {
+    // The plural/second-person copula: "You're not just presenting data;
+    // you're telling the story." Same construction, and the `is`-based
+    // patterns above are blind to it.
+    id: 'arent-x-theyre-y',
+    // `\s?` not a literal space: "are not" has one, "aren't" has none.
+    match: "\\b\\w+('re| are)\\s?n(o|')?t\\b[^.!?]{1,120}[,;—–]\\s*(they|you|we|these|those)'?re\\b",
+    isRegex: true,
+    note: 'parallel contrast is the strongest AI tell',
+  },
+  {
+    // "not just X, but Y" — the additive-escalation cousin. Note the `just`:
+    // it is what separates this from genuine concession ("It's not much, but
+    // it's a start" / "The dashboard isn't pretty, but it's the one thing
+    // customers asked us to keep"), which must keep passing. Plain
+    // "not X, but Y" stays legal for exactly that reason; only the
+    // "not JUST/merely/only" escalation is the tell.
+    id: 'not-just-but',
+    match: "(\\bnot|n'?t) (just|merely|only)\\b[^.!?]{1,120}[,;—–]\\s*but\\b",
+    isRegex: true,
+    note: 'escalation contrast — say the second half and drop the setup',
+  },
 
   // ── Buzzword landscape-speak ─────────────────────────────────────────────
   {
