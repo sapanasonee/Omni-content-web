@@ -126,6 +126,31 @@
     {
       "id": "pass-030",
       "text": "Six drafts of this post and the final version is basically the voice memo I sent my cofounder on Tuesday. Should have started there."
+    },
+    {
+      "id": "pass-031",
+      "note": "near-miss: negation and an 'it's' clause in the SAME post but different sentences — the widened contrast patterns must stay within one sentence",
+      "text": "The pricing page isn't finished. It's been six months and I still can't explain the middle tier without drawing a diagram."
+    },
+    {
+      "id": "pass-032",
+      "note": "near-miss: 'isn't X, but it's Y' — the 'but' breaks the parallel contrast the same way pass-004 does; genuine concession must survive the widened pattern",
+      "text": "The dashboard isn't pretty, but it's the first thing three customers asked us not to change."
+    },
+    {
+      "id": "pass-033",
+      "note": "near-miss: a legitimate semicolon between two clauses where the second does NOT reframe the first",
+      "text": "We rewrote the onboarding in a week; the support tickets about step three stopped within two days of shipping it."
+    },
+    {
+      "id": "pass-034",
+      "note": "near-miss: 'driven' and 'world' both present but not in the buzzword landscape-speak construction",
+      "text": "She's the most driven engineer I've worked with, and the only one who consistently tells me when a deadline is fantasy."
+    },
+    {
+      "id": "pass-035",
+      "note": "near-miss: 'power' and 'potential' used concretely, outside the harness/unlock stock phrases",
+      "text": "I underestimated the potential of our smallest customers. Two of them referred more business last year than our biggest logo ever did."
     }
   ]
 }

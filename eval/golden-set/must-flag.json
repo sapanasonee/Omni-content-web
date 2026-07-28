@@ -165,6 +165,130 @@
       "id": "flag-033",
       "expect": ["synergy"],
       "text": "This partnership creates real synergy between our platforms, and customers on both sides will benefit from the combined offering starting next month."
+    },
+    {
+      "id": "flag-034",
+      "note": "semicolon instead of comma — the separator swap that used to defeat the pattern",
+      "expect": ["not-x-its-y"],
+      "text": "It's not just about drafting good copy; it's about framing the problem so the whole team understands what we're actually solving for."
+    },
+    {
+      "id": "flag-035",
+      "note": "em-dash separator variant of the same construction",
+      "expect": ["not-x-its-y"],
+      "text": "It's not the tooling that slows teams down — it's the six people who each need to approve a one-line change."
+    },
+    {
+      "id": "flag-036",
+      "note": "named subject + \"isn't just\" — the shape that shipped to a real user before this pattern existed",
+      "expect": ["subject-isnt-its"],
+      "text": "The bottleneck isn't just writing code anymore; it's deciding what to build and why, which is a much harder problem to staff for."
+    },
+    {
+      "id": "flag-037",
+      "note": "spelled-out \"is not\" variant with a named subject",
+      "expect": ["subject-isnt-its"],
+      "text": "The hard part is not the shipping, it's the saying no to nine good ideas so the tenth one gets the room it needs."
+    },
+    {
+      "id": "flag-038",
+      "expect": ["isnt-x-this-is"],
+      "text": "We shipped the rewrite in four weeks. This isn't a victory lap; this is the first time the team agreed on what the product was for."
+    },
+    {
+      "id": "flag-039",
+      "expect": ["buzzword-powered-world"],
+      "text": "In this AI-accelerated world, your ability to communicate judgment matters more than your ability to write every line of code yourself."
+    },
+    {
+      "id": "flag-040",
+      "expect": ["buzzword-powered-world"],
+      "text": "In the data-driven era, every team claims to be scientific about decisions, and almost none of them go back to check whether the call was right."
+    },
+    {
+      "id": "flag-041",
+      "expect": ["utilize"],
+      "text": "We utilize a lightweight review process so nothing sits in a queue for more than a day, and the whole team can see where a piece is stuck."
+    },
+    {
+      "id": "flag-042",
+      "expect": ["impactful"],
+      "text": "The most impactful change we made last quarter was cutting our onboarding from nine screens down to three and letting people skip the tour."
+    },
+    {
+      "id": "flag-043",
+      "expect": ["paramount"],
+      "text": "For any early-stage team, speed of learning is paramount, and every process you add should be judged against whether it speeds that up."
+    },
+    {
+      "id": "flag-044",
+      "expect": ["unlock-potential"],
+      "text": "The right systems unlock the potential of a small team, letting four people cover ground that used to take twelve without burning anyone out."
+    },
+    {
+      "id": "flag-045",
+      "expect": ["elevate-your"],
+      "text": "Three writing habits that will elevate your personal brand this quarter, starting with the one nobody wants to hear about consistency."
+    },
+    {
+      "id": "flag-046",
+      "expect": ["harness-the-power"],
+      "text": "Teams that harness the power of their own support transcripts find better positioning language than any agency will hand them."
+    },
+    {
+      "id": "flag-047",
+      "expect": ["cutting-edge"],
+      "text": "We built a cutting-edge pipeline for content review and then discovered the bottleneck was one person's inbox the entire time."
+    },
+    {
+      "id": "flag-048",
+      "expect": ["game-changer"],
+      "text": "Writing our own onboarding emails instead of outsourcing them was a game-changer for how quickly new users understood the product."
+    },
+    {
+      "id": "flag-049",
+      "expect": ["unparalleled"],
+      "text": "Our customers get unparalleled support because every engineer takes a shift answering tickets during their first month on the team."
+    },
+    {
+      "id": "flag-050",
+      "expect": ["seamless"],
+      "text": "The migration was seamless for customers, mostly because we ran both systems in parallel for a month and nobody had to think about it."
+    },
+    {
+      "id": "flag-051",
+      "expect": ["delve"],
+      "text": "Let's delve into what actually happened to our activation numbers in March, because the surface explanation turned out to be wrong."
+    },
+    {
+      "id": "flag-052",
+      "expect": ["myriad"],
+      "text": "There are a myriad of reasons a founder stops publishing, and almost all of them come down to not having a system they trust."
+    },
+    {
+      "id": "flag-053",
+      "expect": ["tapestry"],
+      "text": "Every company culture is a tapestry of the decisions nobody wrote down, which is why the handbook never matches what actually happens."
+    },
+    {
+      "id": "flag-054",
+      "expect": ["testament-to"],
+      "text": "Crossing a thousand customers without a sales team is a testament to how much a good onboarding flow can carry on its own."
+    },
+    {
+      "id": "flag-055",
+      "expect": ["journey-not-destination"],
+      "text": "What I keep telling our new hires is that it's the journey, not the destination, and I can hear how hollow that sounds even as I say it."
+    },
+    {
+      "id": "flag-056",
+      "expect": ["co-pilot-metaphor"],
+      "text": "With AI as your co-pilot, the speed of execution goes up and the quality of your judgment becomes the thing that actually differentiates you."
+    },
+    {
+      "id": "flag-057",
+      "expect": ["double-edged-sword"],
+      "text": "Raising a large round is a double-edged sword, and most founders only find out which edge they got about eighteen months later."
     }
   ]
 }

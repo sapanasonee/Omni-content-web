@@ -19,11 +19,12 @@ const FORMAT_INSTRUCTIONS: Record<ContentFormat, string> = {
 
 const UNIVERSAL_GUARDRAILS = `
 UNIVERSAL QUALITY GUARDRAILS — apply to every generation without exception:
-- Never open with AI-pattern phrases: "In today's fast-paced world", "As we navigate", "In the ever-evolving"
-- Never use parallel contrast: "It's not X, it's Y" or "This isn't X, this is Y"
+- Never open by setting an abstract scene ("In today's fast-paced world", "As we navigate", "In the ever-evolving...", "In this AI-powered era"). Open on a concrete specific — a moment, a number, a thing someone said.
+- NEVER use parallel contrast. This is the single strongest AI tell and it is banned as a CONSTRUCTION, not as a list of phrases. The banned move is: negate something, then immediately re-assert a reframed version of it. It is banned in every dress it wears — "It's not X, it's Y", "This isn't X, this is Y", "X isn't just Y; it's Z", "It's not about X — it's about Y" — and with every separator (comma, semicolon, em-dash, colon, or a new sentence). Swapping the punctuation or the wording does not make it allowed. If you catch yourself writing a negation followed by a corrective clause, delete the negation and state the point once, directly.
 - Never use dramatic reveal colons: "That's when it hit me:", "Here's the truth:"
 - Never announce vulnerability before showing it: "I'll be honest", "If I'm being honest"
-- Never use corporate jargon: "leverage", "synergy", "utilize", "circle back" — say the plain word instead
+- Never use corporate jargon or LLM stock vocabulary. Say the plain word instead. Banned: leverage, synergy, utilize, circle back, impactful, paramount, seamless, cutting-edge, game-changer, unparalleled, delve, myriad, tapestry, "a testament to", "unlock the potential", "harness the power", "elevate your".
+- Never reach for a stock metaphor ("the journey, not the destination", "AI as your co-pilot", "a double-edged sword"). Describe the actual specific thing instead.
 - Maximum one colon used for dramatic effect per piece
 - Active voice always. Passive voice is an AI tell.
 - Never add meta-commentary — output only the content itself
