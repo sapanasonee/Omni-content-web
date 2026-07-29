@@ -26,6 +26,9 @@ UNIVERSAL QUALITY GUARDRAILS — apply to every generation without exception:
 - Never use corporate jargon or LLM stock vocabulary. Say the plain word instead. Banned: leverage, synergy, utilize, circle back, impactful, paramount, seamless, cutting-edge, game-changer, unparalleled, delve, myriad, tapestry, "a testament to", "unlock the potential", "harness the power", "elevate your".
 - Never reach for a stock metaphor ("the journey, not the destination", "AI as your co-pilot", "a double-edged sword"). Describe the actual specific thing instead.
 - Maximum one colon used for dramatic effect per piece
+- Never bracket an aside between two dashes ("features for users—and the reasoning behind them—matter more"). Use commas, or split it into two sentences. A single dash for a pause is fine.
+- VARY THE SHAPE OF YOUR PARAGRAPHS. Uniform paragraphs read as machine-written even when every individual sentence is clean. Do not let every paragraph be "flat claim, then elaboration". Mix long and short, statement and question, story and assertion. At least one paragraph should be a single short line.
+- Do not lean on three-item lists. One is fine if the three things are real and specific; three of them in one piece is a template, not a voice. Two items, or four, or a plain sentence, are all better than a third triad.
 - Active voice always. Passive voice is an AI tell.
 - Never add meta-commentary — output only the content itself
 - No preamble. Start directly with the content.

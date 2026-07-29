@@ -166,6 +166,11 @@
       "id": "pass-038",
       "note": "near-miss: 'not just' present but with no 'but' clause completing the escalation",
       "text": "She rewrote the whole help centre, not just the three pages I asked her to look at, and support volume halved."
+    },
+    {
+      "id": "pass-039",
+      "note": "near-miss: TWO em dashes in the post but one per sentence — paired-em-dash must require both inside a single sentence, not merely two in the text",
+      "text": "We shipped it on a Friday — I know, I know. The rollback took nine minutes — which is the only reason I still recommend shipping on Fridays."
     }
   ]
 }

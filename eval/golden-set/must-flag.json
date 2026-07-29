@@ -317,6 +317,18 @@
       "id": "flag-062",
       "expect": ["not-just-but"],
       "text": "Good onboarding is not merely a tutorial, but the first argument you make for why the product deserves another ten minutes."
+    },
+    {
+      "id": "flag-063",
+      "note": "paired em-dash aside — the construction, not the character; pass-004 and pass-017 keep the single-dash pause legal",
+      "expect": ["paired-em-dash"],
+      "text": "The ability to translate complex capabilities into valuable features for users—and to communicate the reasoning behind them—matters more than the credential."
+    },
+    {
+      "id": "flag-064",
+      "note": "spaced en-dash variant of the same paired aside",
+      "expect": ["paired-em-dash"],
+      "text": "What drives those predictions – the human intent and the experience behind them – still needs someone to translate it for the team."
     }
   ]
 }

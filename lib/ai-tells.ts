@@ -93,6 +93,22 @@ export const AI_TELLS: AITell[] = [
     note: 'escalation contrast — say the second half and drop the setup',
   },
 
+  // ── Punctuation tells ────────────────────────────────────────────────────
+  {
+    // PAIRED em/en dashes bracketing an aside inside one sentence:
+    //   "…features for users—and to communicate the 'why'—is more crucial…"
+    // Deliberately NOT a ban on the em dash. A single dash used as a dramatic
+    // pause is real human punctuation and must keep passing (pass-004,
+    // pass-017 pin exactly that). It is the parenthetical PAIR that reads as
+    // machine-written, so the pattern requires two of them in one sentence.
+    // A user who wants no dashes at all should say so in their Brand DNA
+    // avoid list — that is taste, and the critic enforces taste.
+    id: 'paired-em-dash',
+    match: '[—–][^.!?—–]{1,80}[—–]',
+    isRegex: true,
+    note: 'paired em-dash aside — use commas, or split the sentence',
+  },
+
   // ── Buzzword landscape-speak ─────────────────────────────────────────────
   {
     id: 'buzzword-powered-world',
