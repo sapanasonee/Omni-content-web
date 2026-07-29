@@ -161,6 +161,8 @@ export async function reviseDraft(
 
     const prompt = `You wrote the DRAFT below for ${dna.identity.full_name}. A review found specific issues. Fix ONLY the listed issues. Preserve everything else — the structure, the length, the ideas, and the voice (${dna.voice.description}). Do not polish, do not homogenize, do not add anything new.
 
+FIX THE CAUSE, NOT THE SURFACE MATCH. Each issue names a habit or a construction, not a string to swap out. If a rhetorical move is flagged — negating something so you can re-assert it, bracketing an aside between dashes — remove the move and state the point once, plainly. Do NOT rephrase around the check until it stops firing: a version that keeps the same move in different words has not been fixed, and trading clear English for an awkward clause to dodge the check makes the draft worse than the one you started with. Deleting the offending half is usually the right fix; the remaining sentence is almost always stronger alone.
+
 DRAFT:
 ${draft}
 
