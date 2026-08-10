@@ -13,6 +13,7 @@ import {
   LayoutDashboard,
   ChevronDown,
   LogOut,
+  Plus,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -20,6 +21,10 @@ import { useRouter } from 'next/navigation'
 interface SidebarProps {
   workspace: Workspace
   personas: Persona[]
+  // Resolved server-side (active_persona_id, else oldest) so the highlighted
+  // voice always matches the one /api/me hands to the generate page.
+  activePersonaId: string | null
+  canAddVoice: boolean
   userEmail: string
 }
 
@@ -31,11 +36,45 @@ const NAV_ITEMS = [
   { href: '/dna', label: 'Brand DNA', icon: Dna },
 ]
 
-export default function Sidebar({ workspace, personas, userEmail }: SidebarProps) {
+export default function Sidebar({
+  workspace, personas, activePersonaId, canAddVoice, userEmail,
+}: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [personaOpen, setPersonaOpen] = useState(false)
-  const [activePersona, setActivePersona] = useState<Persona>(personas[0])
+  const [switching, setSwitching] = useState<string | null>(null)
+
+  // Derived from the server prop, NOT local state. The previous version kept
+  // the selection in useState, so switching updated the label and nothing
+  // else — every generation still ran under the workspace's first persona.
+  const activePersona =
+    personas.find(p => p.id === activePersonaId) || personas[0]
+
+  async function handleSwitchPersona(persona: Persona) {
+    if (persona.id === activePersona?.id) {
+      setPersonaOpen(false)
+      return
+    }
+    setSwitching(persona.id)
+    try {
+      const res = await fetch('/api/personas/active', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workspace_id: workspace.id, persona_id: persona.id }),
+      })
+      if (!res.ok) throw new Error('switch failed')
+      setPersonaOpen(false)
+      // Re-render server components so every page picks up the new voice.
+      // refresh() alone is enough here because persona_id is resolved
+      // server-side; client pages re-fetch /api/me on mount.
+      router.refresh()
+    } catch {
+      // Leave the menu open on failure so the unchanged selection is visible
+      // rather than silently reverting behind a closed dropdown.
+    } finally {
+      setSwitching(null)
+    }
+  }
 
   async function handleSignOut() {
     const supabase = createClient()
@@ -76,31 +115,46 @@ export default function Sidebar({ workspace, personas, userEmail }: SidebarProps
           )} />
         </button>
 
-        {/* Persona dropdown */}
-        {personaOpen && personas.length > 1 && (
+        {/* Persona dropdown. Opens whenever there is anywhere to go — another
+            voice to switch to, or room to add one. */}
+        {personaOpen && (personas.length > 1 || canAddVoice) && (
           <div className="mt-1 space-y-0.5">
             {personas.map(persona => (
               <button
                 key={persona.id}
-                onClick={() => {
-                  setActivePersona(persona)
-                  setPersonaOpen(false)
-                }}
+                onClick={() => handleSwitchPersona(persona)}
+                disabled={switching !== null}
                 className={cn(
-                  'w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-colors',
+                  'w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-colors disabled:opacity-50',
                   activePersona?.id === persona.id
                     ? 'bg-[#EEEDFE] text-[#534AB7]'
                     : 'text-gray-600 hover:bg-gray-50'
                 )}
               >
-                <div className="w-5 h-5 bg-[#EEEDFE] rounded-full flex items-center justify-center">
+                <div className="w-5 h-5 bg-[#EEEDFE] rounded-full flex items-center justify-center flex-shrink-0">
                   <span className="text-xs font-medium text-[#534AB7]">
-                    {persona.display_name[0]}
+                    {persona.display_name?.[0] || '?'}
                   </span>
                 </div>
-                {persona.display_name}
+                <span className="truncate">{persona.display_name}</span>
+                {switching === persona.id && (
+                  <span className="ml-auto w-3 h-3 border-2 border-[#534AB7] border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                )}
               </button>
             ))}
+
+            {canAddVoice && (
+              <Link
+                href="/onboarding?mode=add-voice"
+                onClick={() => setPersonaOpen(false)}
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors"
+              >
+                <div className="w-5 h-5 rounded-full border border-dashed border-gray-300 flex items-center justify-center flex-shrink-0">
+                  <Plus className="w-3 h-3" />
+                </div>
+                Add a brand voice
+              </Link>
+            )}
           </div>
         )}
       </div>

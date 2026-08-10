@@ -19,7 +19,11 @@ async function loadCadence(workspace_id: string, persona_id: string): Promise<st
   }
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: { voice_limit?: string }
+}) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -29,13 +33,19 @@ export default async function DashboardPage() {
     .eq('owner_id', user!.id)
     .single()
 
-  const { data: persona } = await supabase
+  // Cadence is a property of a specific voice's Brand DNA, so read it from the
+  // ACTIVE persona rather than the oldest one — otherwise someone managing
+  // several clients would get nudged on the wrong client's posting rhythm.
+  const { data: personas } = await supabase
     .from('personas')
     .select('id')
     .eq('workspace_id', workspace?.id)
     .order('created_at', { ascending: true })
-    .limit(1)
-    .single()
+
+  const persona =
+    (workspace?.active_persona_id &&
+      personas?.find(p => p.id === workspace.active_persona_id)) ||
+    personas?.[0]
 
   const [{ data: recentContent }, { data: approvals }] = await Promise.all([
     supabase
@@ -78,6 +88,17 @@ export default async function DashboardPage() {
           </div>
         )}
       </div>
+
+      {searchParams.voice_limit && (
+        <div className="mb-6 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl">
+          <p className="text-sm text-amber-800">
+            You&apos;ve used every brand voice your plan includes.{' '}
+            <Link href="/pricing" className="font-medium underline underline-offset-2">
+              See plans →
+            </Link>
+          </p>
+        </div>
+      )}
 
       {nudgeState.nudge && nudgeState.message && (
         <Link

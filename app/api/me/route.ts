@@ -27,17 +27,32 @@ export async function GET() {
       return NextResponse.json({ error: 'No workspace found' }, { status: 404 })
     }
 
-    const { data: persona } = await supabase
+    // Every client page resolves the persona it generates under from here, so
+    // this is where "which brand voice am I working in" is decided.
+    //
+    // Prefer the workspace's active_persona_id, falling back to the oldest
+    // persona. The fallback matters in three real cases: workspaces created
+    // before voice switching existed (active_persona_id is null on every
+    // pre-existing row), a failed best-effort write in POST /api/personas, and
+    // a persona deleted while still selected. Resolving by ownership rather
+    // than trusting the column blindly also means a stale id pointing at a
+    // deleted or foreign persona degrades to a valid voice instead of a 404
+    // loop or a cross-tenant read.
+    const { data: personas } = await supabase
       .from('personas')
       .select('*')
       .eq('workspace_id', workspace.id)
       .order('created_at', { ascending: true })
-      .limit(1)
-      .single()
+
+    const activeId = workspace.active_persona_id as string | null | undefined
+    const persona =
+      (activeId && personas?.find(p => p.id === activeId)) || personas?.[0]
 
     return NextResponse.json({
       workspace_id: workspace.id,
       persona_id: persona?.id,
+      persona_display_name: persona?.display_name,
+      personas: (personas || []).map(p => ({ id: p.id, display_name: p.display_name })),
       plan_tier: workspace.plan_tier,
       generations_used: workspace.generations_used,
     })

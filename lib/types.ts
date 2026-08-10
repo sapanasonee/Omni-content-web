@@ -100,7 +100,15 @@ export interface TrendingTopic {
   content_angle: string
 }
 
-// Plan limits
+// Plan limits — the single source of truth for what a tier is allowed to do.
+//
+// NOTE: only `max_personas` is enforced today (POST /api/personas). The
+// generation caps below are NOT yet wired: /api/generate and /api/comment
+// still hardcode `30` and gate on `plan_tier === 'solo'`, and the quota
+// counter lives per-workspace rather than per-account. Read those numbers as
+// the intended contract, not as current behavior, until the quota rework
+// lands — and when it does, route every limit through planLimitsFor() rather
+// than reintroducing literals.
 export const PLAN_LIMITS = {
   solo: {
     max_personas: 1,
@@ -118,3 +126,19 @@ export const PLAN_LIMITS = {
     max_active_rag_pieces: Infinity,
   },
 } as const
+
+export type PlanTier = keyof typeof PLAN_LIMITS
+export type PlanLimits = (typeof PLAN_LIMITS)[PlanTier]
+
+// Resolve a tier string from the database into its limits.
+//
+// `workspaces.plan_tier` is a free-text column with no CHECK constraint and is
+// nullable, so an unrecognized or absent value is entirely possible (rows
+// predating the tier system, a typo'd manual update in the SQL editor). This
+// fails CLOSED to the most restrictive tier: an unknown tier must never be
+// read as "unlimited", because these limits gate spend. Callers therefore
+// never have to null-check or branch on tier validity.
+export function planLimitsFor(tier: string | null | undefined): PlanLimits {
+  if (tier && tier in PLAN_LIMITS) return PLAN_LIMITS[tier as PlanTier]
+  return PLAN_LIMITS.solo
+}

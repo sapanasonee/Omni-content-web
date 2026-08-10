@@ -65,14 +65,25 @@ export async function POST(request: Request) {
     // unlimited free generations (plus 3 quota-exempt activation drafts
     // each). The cap turns that from "unlimited" into "bounded and small".
     //
-    // Why 3 and not 1: re-running onboarding is a legitimate flow (the user
+    // Why 5 and not 1: re-running onboarding is a legitimate flow (the user
     // may want a fresh profile after a pivot, and existing test accounts have
     // done exactly that), and /api/me already resolves to the most recent
-    // workspace, so older ones are inert rather than harmful. 3 keeps the
-    // abuse ceiling at ~90 generations/month per account while never blocking
-    // a real founder redoing setup. Raise it deliberately if multi-workspace
-    // ever becomes a product feature — don't remove the check.
-    const MAX_WORKSPACES_PER_USER = 3
+    // workspace, so older ones are inert rather than harmful.
+    //
+    // STOPGAP — this number is currently load-bearing for spend, and shouldn't
+    // be. Because quota is tracked PER WORKSPACE, this cap is the only thing
+    // bounding free generations per account: at 5 the ceiling is ~150/month,
+    // which is exactly what /pricing sells as the paid Studio tier. That is
+    // knowingly accepted for early access (there is no billing yet), but it
+    // must be closed before the offer is publicized. The fix is to move the
+    // quota counter to the ACCOUNT level so "how many voices" and "how much
+    // you can generate" stop being the same dial — at which point this cap
+    // goes back to being a pure abuse guard and can drop to 1-2.
+    //
+    // Multiple brand voices are NOT supposed to come from multiple workspaces
+    // any more: that's what personas are for (POST /api/personas, capped by
+    // PLAN_LIMITS.max_personas). Don't raise this again to add voices.
+    const MAX_WORKSPACES_PER_USER = 5
     const { count: workspaceCount } = await supabase
       .from('workspaces')
       .select('id', { count: 'exact', head: true })

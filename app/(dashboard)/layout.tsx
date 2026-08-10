@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
+import { planLimitsFor } from '@/lib/types'
 export const dynamic = 'force-dynamic'
 
 export default async function DashboardLayout({
@@ -29,11 +30,24 @@ export default async function DashboardLayout({
     .eq('workspace_id', workspace.id)
     .order('created_at', { ascending: true })
 
+  // Same resolution rule as /api/me — active voice, else oldest. Kept
+  // consistent so the sidebar can never highlight a different voice than the
+  // one generation will actually use.
+  const list = personas || []
+  const activePersonaId =
+    (workspace.active_persona_id && list.some(p => p.id === workspace.active_persona_id)
+      ? workspace.active_persona_id
+      : list[0]?.id) ?? null
+
+  const maxVoices = planLimitsFor(workspace.plan_tier).max_personas
+
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar
         workspace={workspace}
-        personas={personas || []}
+        personas={list}
+        activePersonaId={activePersonaId}
+        canAddVoice={list.length < maxVoices}
         userEmail={user.email || ''}
       />
       <main className="flex-1 overflow-auto">
