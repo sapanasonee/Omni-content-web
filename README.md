@@ -80,7 +80,13 @@ GCP_PROJECT_ID=
 GCS_BUCKET_NAME=
 NEXT_PUBLIC_ADK_URL=
 NEXT_PUBLIC_APP_URL=
+FOUNDER_EMAILS=
 ```
+
+`SUPABASE_SERVICE_ROLE_KEY` is required only by `/admin` (manual plan-tier
+grants), which writes across the RLS boundary. Everything else runs on the anon
+key. `FOUNDER_EMAILS` is the comma-separated allowlist for that page; it
+defaults to the founder addresses in `lib/admin.ts` when unset.
 
 ## Submitted to
 
