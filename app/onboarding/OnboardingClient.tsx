@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -17,7 +17,7 @@ interface VoiceExtraction {
   topics: string[]
 }
 
-// â”€â”€â”€ Sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
 const ACTIVATION_FORMAT_MAP: Record<string, { value: string; label: string }> = {
   'LinkedIn': { value: 'linkedin', label: 'LinkedIn' },
@@ -322,7 +322,7 @@ function TagInput({ onAdd }: { onAdd: (tag: string) => void }) {
   )
 }
 
-// â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const STEPS = [
   { number: 1, name: 'Identity' },
@@ -367,7 +367,7 @@ const AVOID_OPTIONS = [
   'Overly promotional language',
 ]
 
-// â”€â”€â”€ Main component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export default function OnboardingClient({
   mode = 'signup',
@@ -582,7 +582,7 @@ export default function OnboardingClient({
     updateSection('topics', (data.topics || []).filter((t: string) => t !== topic))
   }
 
-  // â”€â”€â”€ Saving state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Saving state ─────────────────────────────────────────────────────────
 
   if (saving) {
     return (
@@ -734,7 +734,7 @@ export default function OnboardingClient({
     )
   }
 
-  // â”€â”€â”€ Main render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Main render ──────────────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-white py-12 px-4">
@@ -745,7 +745,7 @@ export default function OnboardingClient({
           <div className="w-8 h-8 bg-[#534AB7] rounded-lg mx-auto mb-3" />
           <h1 className="text-xl font-bold text-gray-900">Set up your brand voice</h1>
           <p className="text-sm text-gray-500">
-            Step {step} of {totalSteps} â€” {STEPS[step - 1].name}
+            Step {step} of {totalSteps} — {STEPS[step - 1].name}
           </p>
         </div>
 
@@ -765,7 +765,7 @@ export default function OnboardingClient({
         {/* Step card */}
         <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm space-y-5">
 
-          {/* Step 1 â€” Identity */}
+          {/* Step 1 — Identity */}
           {step === 1 && (
             <div className="space-y-4">
               <div>
@@ -788,7 +788,7 @@ export default function OnboardingClient({
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#534AB7]/30 focus:border-[#534AB7]"
                 />
                 <p className="text-xs text-gray-400 mt-1">
-                  Not your job title â€” what you actually do and where you are in your journey
+                  Not your job title — what you actually do and where you are in your journey
                 </p>
               </div>
               <div>
@@ -804,7 +804,7 @@ export default function OnboardingClient({
             </div>
           )}
 
-          {/* Step 2 â€” Audience */}
+          {/* Step 2 — Audience */}
           {step === 2 && (
             <div className="space-y-4">
               <div>
@@ -836,7 +836,7 @@ export default function OnboardingClient({
                           onClick={() => removeSegment(seg)}
                           className="hover:opacity-70 ml-0.5"
                         >
-                          Ã—
+                          ×
                         </button>
                       </span>
                     ))}
@@ -905,7 +905,7 @@ export default function OnboardingClient({
             </div>
           )}
 
-          {/* Step 3 â€” Voice */}
+          {/* Step 3 — Voice */}
           {step === 3 && (
             <div className="space-y-4">
               <div>
@@ -918,7 +918,7 @@ export default function OnboardingClient({
                 <textarea
                   value={data.voice.description}
                   onChange={e => updateSection('voice', { description: e.target.value })}
-                  placeholder="e.g. Direct and warm. I open with a specific moment, not a broad statement. I never lecture â€” I share what I learned and invite the reader to think."
+                  placeholder="e.g. Direct and warm. I open with a specific moment, not a broad statement. I never lecture — I share what I learned and invite the reader to think."
                   rows={4}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#534AB7]/30 focus:border-[#534AB7] resize-none"
                 />
@@ -926,7 +926,7 @@ export default function OnboardingClient({
                   <div className="mt-2 space-y-1.5">
                     <p className="text-xs text-gray-400">Need inspiration? Click one to start:</p>
                     {[
-                      "Direct and warm. I open with a specific moment, not a broad statement. I never lecture â€” I share what I learned and invite the reader to think.",
+                      "Direct and warm. I open with a specific moment, not a broad statement. I never lecture — I share what I learned and invite the reader to think.",
                       "Concise and precise. I cut every word that doesn't earn its place. I write for builders who don't have time for fluff.",
                       "Conversational and honest. I write like I'm talking to one person over coffee. I share the uncomfortable truth, not the comfortable version.",
                     ].map((example, i) => (
@@ -998,7 +998,7 @@ export default function OnboardingClient({
             </div>
           )}
 
-          {/* Step 4 â€” Examples */}
+          {/* Step 4 — Examples */}
           {step === 4 && (
             <div className="space-y-4">
               <div>
@@ -1055,7 +1055,7 @@ export default function OnboardingClient({
                 <textarea
                   value={data.examples.bad}
                   onChange={e => updateSection('examples', { bad: e.target.value })}
-                  placeholder="Paste an example of writing that makes you cringe â€” or describe what it sounds like..."
+                  placeholder="Paste an example of writing that makes you cringe — or describe what it sounds like..."
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#534AB7]/30 focus:border-[#534AB7] resize-none"
                 />
@@ -1063,7 +1063,7 @@ export default function OnboardingClient({
             </div>
           )}
 
-          {/* Step 5 â€” Avoid */}
+          {/* Step 5 — Avoid */}
           {step === 5 && (
             <div className="space-y-4">
               <div>
@@ -1082,7 +1082,7 @@ export default function OnboardingClient({
                 />
               </div>
               <div>
-                <p className="text-xs text-gray-400 mb-2">Common avoids â€” click to add:</p>
+                <p className="text-xs text-gray-400 mb-2">Common avoids — click to add:</p>
                 <div className="flex flex-wrap gap-2">
                   {AVOID_OPTIONS
                     .filter((item: string) => !data.avoid.includes(item))
@@ -1101,7 +1101,7 @@ export default function OnboardingClient({
             </div>
           )}
 
-          {/* Step 6 â€” Formats */}
+          {/* Step 6 — Formats */}
           {step === 6 && (
             <div className="space-y-4">
               <div>

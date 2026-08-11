@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start -p 3002",
     "lint": "next lint",
-    "eval": "tsx scripts/eval-golden-set.ts"
+    "eval": "tsx scripts/eval-golden-set.ts",
+    "check:encoding": "tsx scripts/check-encoding.ts"
   },
   "dependencies": {
     "@google-cloud/discoveryengine": "^2.7.0",

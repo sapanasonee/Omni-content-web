@@ -1,0 +1,19 @@
+# Source files in this repo contain non-ASCII characters in user-visible copy
+# (em dashes, the × on removable chips) and in comment rules. Saving any of them
+# as Windows-1252 double-encodes those characters — "×" renders as "Ã—" and "—"
+# as "â€”" in the live UI. That has already happened once, to
+# app/onboarding/OnboardingClient.tsx.
+#
+# charset = utf-8 is the setting that prevents it. VS Code needs the
+# EditorConfig extension for this to apply; `npm run check:encoding` is the
+# backstop that catches it either way.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.md]
+trim_trailing_whitespace = false
