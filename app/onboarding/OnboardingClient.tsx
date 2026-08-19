@@ -327,8 +327,8 @@ function TagInput({ onAdd }: { onAdd: (tag: string) => void }) {
 const STEPS = [
   { number: 1, name: 'Identity' },
   { number: 2, name: 'Audience' },
-  { number: 3, name: 'Voice' },
-  { number: 4, name: 'Examples' },
+  { number: 3, name: 'Examples' },
+  { number: 4, name: 'Voice' },
   { number: 5, name: 'Avoid' },
   { number: 6, name: 'Formats' },
 ]
@@ -388,6 +388,13 @@ export default function OnboardingClient({
   } = useOnboarding()
 
   const [saving, setSaving] = useState(false)
+  // Auto-derives voice.description/tones/formality/pace from the Step 3
+  // samples on first arrival at Step 4, instead of asking the user to
+  // self-report them. 'idle' before it's run, so the manual "need
+  // inspiration" prompts on step 4 stay silent until we know derivation
+  // isn't happening.
+  const [voiceDeriveStatus, setVoiceDeriveStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
+  const voiceDeriveAttempted = useRef(false)
   const [error, setError] = useState<string | null>(null)
   const [activationIds, setActivationIds] = useState<{ workspace_id: string; persona_id: string } | null>(null)
 
@@ -408,6 +415,44 @@ export default function OnboardingClient({
       recorderRef.current?.stream.getTracks().forEach(t => t.stop())
     }
   }, [])
+
+  // Fires once, the first time the user reaches Step 4 with samples already
+  // in hand. Skips entirely if voice.description is already populated — most
+  // commonly because the spoken intro already derived it (see the extraction
+  // effect below), in which case that signal wins and this never overwrites
+  // it. Never blocks progress: any failure just leaves the manual fields
+  // empty, same UI as before this existed.
+  useEffect(() => {
+    if (step !== 4) return
+    if (voiceDeriveAttempted.current) return
+    if (data.voice.description.trim() !== '') return
+    const samples = goodSamples().filter(s => s.trim() !== '')
+    if (samples.length === 0) return
+
+    voiceDeriveAttempted.current = true
+    setVoiceDeriveStatus('loading')
+    ;(async () => {
+      try {
+        const res = await fetch('/api/voice-from-examples', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            good_samples: samples,
+            bad: data.examples.bad,
+            role: data.identity.role,
+            industry: data.identity.industry,
+          }),
+        })
+        if (!res.ok) throw new Error()
+        const { voice } = await res.json()
+        updateSection('voice', voice)
+        setVoiceDeriveStatus('done')
+      } catch {
+        setVoiceDeriveStatus('error')
+      }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step])
 
   async function startRecording() {
     setVoiceError(null)
@@ -905,9 +950,90 @@ export default function OnboardingClient({
             </div>
           )}
 
-          {/* Step 3 — Voice */}
+          {/* Step 3 — Examples */}
           {step === 3 && (
             <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Paste the best piece of content you&apos;ve created or you admire of others
+                </label>
+                <p className="text-xs text-gray-400 mb-3">
+                  A LinkedIn post, email, or any writing that felt most like you.
+                  Haven&apos;t found your best voice yet? Paste one you admire instead.
+                  Add up to 3 — the variety helps us learn the range you like, not
+                  just one format. We&apos;ll pick up your voice and tone from these
+                  next, so the more they sound like you, the better.
+                </p>
+                <div className="space-y-3">
+                  {goodSamples().map((sample, i) => (
+                    <div key={i} className="relative">
+                      {goodSamples().length > 1 && (
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-medium text-gray-500">
+                            Sample {i + 1}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeSample(i)}
+                            className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      )}
+                      <textarea
+                        value={sample}
+                        onChange={e => updateSample(i, e.target.value)}
+                        placeholder={i === 0 ? 'Paste your content here...' : 'Paste another piece you like...'}
+                        rows={i === 0 ? 8 : 5}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#534AB7]/30 focus:border-[#534AB7] resize-none font-mono"
+                      />
+                    </div>
+                  ))}
+                </div>
+                {goodSamples().length < 3 && (
+                  <button
+                    type="button"
+                    onClick={addSample}
+                    className="mt-2 text-xs font-medium text-[#534AB7] hover:opacity-80 transition-opacity"
+                  >
+                    + Add another piece ({goodSamples().length}/3)
+                  </button>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Example of content you dislike (optional)
+                </label>
+                <textarea
+                  value={data.examples.bad}
+                  onChange={e => updateSection('examples', { bad: e.target.value })}
+                  placeholder="Paste an example of writing that makes you cringe — or describe what it sounds like..."
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#534AB7]/30 focus:border-[#534AB7] resize-none"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Step 4 — Voice. Auto-derived from the Step 3 samples (see the
+              deriveVoiceFromExamples effect below) so this reads as a review
+              of what we picked up, not a blank ask — every field stays
+              editable, so it doubles as the correction UI when the guess is
+              off. */}
+          {step === 4 && (
+            <div className="space-y-4">
+              {voiceDeriveStatus === 'loading' && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#EEEDFE] text-xs text-[#534AB7]">
+                  <span className="w-3.5 h-3.5 border-2 border-[#534AB7] border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                  Picking up your voice from what you pasted…
+                </div>
+              )}
+              {voiceDeriveStatus === 'done' && (
+                <p className="px-3 py-2 rounded-lg bg-[#EEEDFE] text-xs text-[#534AB7]">
+                  Picked up from your examples — adjust anything that&apos;s off.
+                </p>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Describe your voice
@@ -922,9 +1048,13 @@ export default function OnboardingClient({
                   rows={4}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#534AB7]/30 focus:border-[#534AB7] resize-none"
                 />
-                {data.voice.description === '' && (
+                {data.voice.description === '' && voiceDeriveStatus !== 'loading' && (
                   <div className="mt-2 space-y-1.5">
-                    <p className="text-xs text-gray-400">Need inspiration? Click one to start:</p>
+                    <p className="text-xs text-gray-400">
+                      {voiceDeriveStatus === 'error'
+                        ? "Couldn't pick this up automatically — click one to start, or write your own:"
+                        : 'Need inspiration? Click one to start:'}
+                    </p>
                     {[
                       "Direct and warm. I open with a specific moment, not a broad statement. I never lecture — I share what I learned and invite the reader to think.",
                       "Concise and precise. I cut every word that doesn't earn its place. I write for builders who don't have time for fluff.",
@@ -994,71 +1124,6 @@ export default function OnboardingClient({
                     className="w-full accent-[#534AB7]"
                   />
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* Step 4 — Examples */}
-          {step === 4 && (
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Paste the best piece of content you&apos;ve created or you admire of others
-                </label>
-                <p className="text-xs text-gray-400 mb-3">
-                  A LinkedIn post, email, or any writing that felt most like you.
-                  Haven&apos;t found your best voice yet? Paste one you admire instead.
-                  Add up to 3 — the variety helps us learn the range you like, not
-                  just one format.
-                </p>
-                <div className="space-y-3">
-                  {goodSamples().map((sample, i) => (
-                    <div key={i} className="relative">
-                      {goodSamples().length > 1 && (
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-medium text-gray-500">
-                            Sample {i + 1}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => removeSample(i)}
-                            className="text-xs text-gray-400 hover:text-red-500 transition-colors"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      )}
-                      <textarea
-                        value={sample}
-                        onChange={e => updateSample(i, e.target.value)}
-                        placeholder={i === 0 ? 'Paste your content here...' : 'Paste another piece you like...'}
-                        rows={i === 0 ? 8 : 5}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#534AB7]/30 focus:border-[#534AB7] resize-none font-mono"
-                      />
-                    </div>
-                  ))}
-                </div>
-                {goodSamples().length < 3 && (
-                  <button
-                    type="button"
-                    onClick={addSample}
-                    className="mt-2 text-xs font-medium text-[#534AB7] hover:opacity-80 transition-opacity"
-                  >
-                    + Add another piece ({goodSamples().length}/3)
-                  </button>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Example of content you dislike (optional)
-                </label>
-                <textarea
-                  value={data.examples.bad}
-                  onChange={e => updateSection('examples', { bad: e.target.value })}
-                  placeholder="Paste an example of writing that makes you cringe — or describe what it sounds like..."
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#534AB7]/30 focus:border-[#534AB7] resize-none"
-                />
               </div>
             </div>
           )}

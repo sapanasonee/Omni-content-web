@@ -38,8 +38,11 @@ export function useOnboarding() {
         data.identity.industry.trim() !== ''
       )
       case 2: return data.audience.description.trim() !== ''
-      case 3: return data.voice.description.trim() !== ''
-      case 4: return (data.examples.good_samples || []).some(s => s.trim() !== '')
+      // Examples now precede Voice — voice.description/tones/formality/pace
+      // are derived FROM these samples (see the Voice step), so they have to
+      // exist first.
+      case 3: return (data.examples.good_samples || []).some(s => s.trim() !== '')
+      case 4: return data.voice.description.trim() !== ''
       case 5: return data.avoid.length > 0
       case 6: return data.formats.preferred.length > 0 && data.formats.cadence !== ''
       default: return false
