@@ -12,7 +12,11 @@ import { sendFounderAlert } from '@/lib/founder-alert'
 // stop on their own without a redeploy. The PERMANENT new-user alert lives in
 // /api/onboarding (fires once per genuinely-new user, not time-boxed) — that's
 // the one that keeps going after this window closes.
-const NOTIFY_UNTIL = new Date('2026-08-21T23:59:59Z')
+// Extended once (2026-08-21 -> 2026-09-21) — early access is still running and
+// the per-login engagement signal is still worth having. Extend again or delete
+// the route deliberately; don't let it lapse by accident, because the failure
+// mode is silent (alerts just stop, nothing errors).
+const NOTIFY_UNTIL = new Date('2026-09-21T23:59:59Z')
 
 export async function POST(request: Request) {
   try {
