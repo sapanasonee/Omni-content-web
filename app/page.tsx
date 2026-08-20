@@ -75,7 +75,7 @@ export default function Home() {
       <Hero />
 
       {/* How it works */}
-      <section className="max-w-5xl mx-auto px-6 py-16 border-t border-gray-100">
+      <section id="how-it-works" className="max-w-5xl mx-auto px-6 py-16 border-t border-gray-100">
         <h2 className="text-sm font-semibold text-[#534AB7] uppercase tracking-wide text-center mb-10">
           How it works
         </h2>

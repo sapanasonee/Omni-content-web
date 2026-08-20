@@ -34,25 +34,35 @@ export default function Hero() {
       <div className="grid lg:grid-cols-2 gap-12 items-center">
         <div className="text-center lg:text-left">
           <p className="text-xs font-mono font-semibold text-[#534AB7] uppercase tracking-widest mb-4">
-            The content engine for founders, directors, and future consultants
+            AI that gets better at you
           </p>
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight leading-tight">
-            Your strategic insights.<br />Polished in 90 seconds.
+            Stop prompting AI to sound like you.<br />Teach it how you think.
           </h1>
           <p className="mt-5 text-lg text-gray-500 max-w-xl mx-auto lg:mx-0">
-            Stop wasting hours trying to prompt generic AI tools. Give us 2 minutes of your
-            voice to map your unique Brand DNA. Vowwl builds your personalized content
-            engine, mapping out ideas and writing high-impact posts that look, feel, and
-            sound authentic to you.
+            Vowwl learns your voice, preferences, and judgment from how you work with
+            content—what you keep, what you change, and what you reject. So the more you
+            use it, the better it understands you.
+          </p>
+          <p className="mt-3 text-sm font-medium text-[#534AB7] max-w-xl mx-auto lg:mx-0">
+            Your feedback becomes context. Your context becomes better output.
           </p>
 
           <div className="mt-8 flex items-center justify-center lg:justify-start gap-4">
             <Link
-              href="/login"
+              href="#how-it-works"
               className="px-6 py-3 bg-[#534AB7] text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity"
             >
-              Start building your brand for free →
+              See how Vowwl works →
             </Link>
+            <a
+              href="https://calendly.com/sonisapna45/30min"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-6 py-3 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:border-gray-300 transition-colors"
+            >
+              Request a demo
+            </a>
           </div>
 
           <div className="mt-6 flex items-center justify-center lg:justify-start gap-2">
@@ -84,17 +94,6 @@ export default function Hero() {
 
           <p className="mt-4 text-xs text-gray-400 text-center lg:text-left">
             Magic-link sign in · 30 free pieces a month · no credit card
-          </p>
-          <p className="mt-4 text-sm text-gray-500 text-center lg:text-left">
-            Want a personal walkthrough instead?{' '}
-            <a
-              href="https://calendly.com/sonisapna45/30min"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[#534AB7] font-medium hover:opacity-80 transition-opacity underline underline-offset-2"
-            >
-              Book time with me
-            </a>
           </p>
         </div>
 
