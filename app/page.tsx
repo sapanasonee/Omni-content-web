@@ -31,18 +31,21 @@ const FEATURES = [
 const STEPS = [
   {
     n: '1',
-    title: 'Say who you are',
-    body: 'Answer one question out loud: what do most people in your space get wrong? Vowwl drafts your profile from your own words.',
+    title: 'Give it something real',
+    kicker: 'Say what you think',
+    body: 'Answer a question, share a story, or talk through an idea. No prompts or blank pages. Vowwl starts with your actual thinking.',
   },
   {
     n: '2',
-    title: 'Get three drafts instantly',
-    body: 'Before onboarding even ends, your first three pieces are waiting, grounded in what you just said, in your voice.',
+    title: 'Turn it into content',
+    kicker: 'Get drafts with context',
+    body: 'Vowwl turns what you said into drafts for LinkedIn, X, or wherever you publish, shaped around your perspective, not generic AI patterns.',
   },
   {
     n: '3',
-    title: 'Approve, edit, sharpen',
-    body: 'Everything you approve teaches it how you write. Everything you edit teaches it what to stop doing.',
+    title: 'Teach it through judgment',
+    kicker: 'Approve, edit, reject',
+    body: "What you approve tells Vowwl what works. What you change or reject tells it what doesn't. Over time, the context gets sharper.",
   },
 ]
 
@@ -53,7 +56,7 @@ export default function Home() {
       {/* Nav */}
       <nav className="max-w-5xl mx-auto px-6 py-5 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-[#534AB7] rounded-lg" />
+          <img src="/icon.svg" alt="Vowwl" className="w-7 h-7 rounded-lg" />
           <span className="text-sm font-bold">Vowwl</span>
         </div>
         <div className="flex items-center gap-5">
@@ -77,7 +80,7 @@ export default function Home() {
       {/* How it works */}
       <section id="how-it-works" className="max-w-5xl mx-auto px-6 py-16 border-t border-gray-100">
         <h2 className="text-sm font-semibold text-[#534AB7] uppercase tracking-wide text-center mb-10">
-          How it works
+          How Vowwl works
         </h2>
         <div className="grid sm:grid-cols-3 gap-8">
           {STEPS.map(step => (
@@ -85,7 +88,8 @@ export default function Home() {
               <div className="w-8 h-8 bg-[#EEEDFE] text-[#534AB7] rounded-lg flex items-center justify-center text-sm font-bold mx-auto sm:mx-0 mb-3">
                 {step.n}
               </div>
-              <h3 className="text-sm font-semibold mb-1.5">{step.title}</h3>
+              <h3 className="text-sm font-semibold mb-0.5">{step.title}</h3>
+              <p className="text-xs font-medium text-[#534AB7] mb-1.5">{step.kicker}</p>
               <p className="text-sm text-gray-500 leading-relaxed">{step.body}</p>
             </div>
           ))}
@@ -136,7 +140,7 @@ export default function Home() {
       <footer className="border-t border-gray-100">
         <div className="max-w-5xl mx-auto px-6 py-8 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-5 h-5 bg-[#534AB7] rounded-md" />
+            <img src="/icon.svg" alt="Vowwl" className="w-5 h-5 rounded-md" />
             <span className="text-xs font-semibold text-gray-700">Vowwl</span>
           </div>
           <div className="flex items-center gap-4">

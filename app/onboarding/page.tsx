@@ -202,7 +202,7 @@ function ActivationDrafts({
     <div className="min-h-screen bg-white py-12 px-4">
       <div className="max-w-4xl mx-auto space-y-8">
         <div className="text-center space-y-1">
-          <div className="w-8 h-8 bg-[#534AB7] rounded-lg mx-auto mb-3" />
+          <img src="/icon.svg" alt="Vowwl" className="w-8 h-8 rounded-lg mx-auto mb-3" />
           <h1 className="text-xl font-bold text-gray-900">Your first three drafts</h1>
           <p className="text-sm text-gray-500">
             Written from what you just said — in your voice. Approve the ones that sound like you; they become your brand memory.
@@ -599,7 +599,7 @@ export default function OnboardingPage() {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center px-4">
         <div className="max-w-md w-full text-center space-y-6">
-          <div className="w-8 h-8 bg-[#534AB7] rounded-lg mx-auto" />
+          <img src="/icon.svg" alt="Vowwl" className="w-8 h-8 rounded-lg mx-auto" />
           <div>
             <h1 className="text-xl font-bold text-gray-900 mb-2">Start with your voice</h1>
             <p className="text-sm text-gray-500">
@@ -713,7 +713,7 @@ export default function OnboardingPage() {
 
         {/* Header */}
         <div className="text-center space-y-1">
-          <div className="w-8 h-8 bg-[#534AB7] rounded-lg mx-auto mb-3" />
+          <img src="/icon.svg" alt="Vowwl" className="w-8 h-8 rounded-lg mx-auto mb-3" />
           <h1 className="text-xl font-bold text-gray-900">Set up your brand voice</h1>
           <p className="text-sm text-gray-500">
             Step {step} of {totalSteps} â€” {STEPS[step - 1].name}

@@ -111,7 +111,7 @@ export default function PricingPage() {
       {/* Nav */}
       <nav className="max-w-5xl mx-auto px-6 py-5 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-[#534AB7] rounded-lg" />
+          <img src="/icon.svg" alt="Vowwl" className="w-7 h-7 rounded-lg" />
           <span className="text-sm font-bold">Vowwl</span>
         </Link>
         <div className="flex items-center gap-5">
@@ -261,7 +261,7 @@ export default function PricingPage() {
       <footer className="border-t border-gray-100">
         <div className="max-w-5xl mx-auto px-6 py-8 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-5 h-5 bg-[#534AB7] rounded-md" />
+            <img src="/icon.svg" alt="Vowwl" className="w-5 h-5 rounded-md" />
             <span className="text-xs font-semibold text-gray-700">Vowwl</span>
           </Link>
           <p className="text-xs text-gray-400">© {new Date().getFullYear()} Vowwl · vowwl.com</p>

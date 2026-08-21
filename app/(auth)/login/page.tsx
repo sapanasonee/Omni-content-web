@@ -72,7 +72,7 @@ function LoginForm() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="w-full max-w-sm space-y-4 px-4 text-center">
-          <div className="w-10 h-10 bg-[#534AB7] rounded-xl mx-auto" />
+          <img src="/icon.svg" alt="Vowwl" className="w-10 h-10 rounded-xl mx-auto" />
           <h1 className="text-xl font-bold text-gray-900">Check your email</h1>
           <p className="text-sm text-gray-500">
             We sent a sign-in link to <strong>{email}</strong>. Click it to continue.
@@ -92,7 +92,7 @@ function LoginForm() {
     <div className="min-h-screen flex items-center justify-center bg-white">
       <div className="w-full max-w-sm space-y-8 px-4">
         <div className="text-center space-y-2">
-          <div className="w-10 h-10 bg-[#534AB7] rounded-xl mx-auto mb-4" />
+          <img src="/icon.svg" alt="Vowwl" className="w-10 h-10 rounded-xl mx-auto mb-4" />
           <h1 className="text-2xl font-bold tracking-tight text-gray-900">Vowwl</h1>
           <p className="text-sm text-gray-500">Enter your email to sign in</p>
         </div>
