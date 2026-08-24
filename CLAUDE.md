@@ -275,8 +275,18 @@ error, check the live schema before assuming the code is wrong.
   managed at Hostinger; Hostinger web hosting itself is unused/irrelevant now
   (an old placeholder `index.html` sitting there is harmless — DNS no longer
   routes to it).
-- **Supabase Auth → URL Configuration must include `https://vowwl.com`** in
-  Site URL + redirect allowlist, or magic links break. Verify this was done.
+- **Supabase Auth → URL Configuration**: Site URL is `https://vowwl.com`;
+  `https://vowwl.com/auth/callback` is in the redirect allowlist and
+  confirmed working end-to-end (2026-08-24 — a magic-link login was seen
+  landing on `vowwl.com/?code=...`, the bare homepage with an unconsumed
+  code, instead of `/auth/callback`; root cause was this redirect URL
+  missing from the allowlist, not app code — `app/auth/callback/route.ts`
+  and the `emailRedirectTo` in `app/(auth)/login/page.tsx` were already
+  correct. Adding the exact URL fixed it). Whether `www.vowwl.com` is also
+  mapped to Cloud Run is unconfirmed (only the bare domain's mapping is
+  documented above) — if it is (or ever becomes) reachable, add
+  `https://www.vowwl.com/**` to the redirect allowlist too, or anyone who
+  lands on the www host will hit this exact same failure mode again.
 - No billing/Stripe integration exists anywhere. `plan_tier` is a column with
   no enforcement beyond the solo-tier generation cap. Don't imply paid-plan
   differentiation in marketing copy until this is real.
