@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { resolveWorkspaces } from '@/lib/active-workspace'
 import { Storage } from '@google-cloud/storage'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -23,19 +24,13 @@ export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { data: workspace } = await supabase
-    .from('workspaces')
-    .select('*')
-    .eq('owner_id', user!.id)
-    .single()
-
-  const { data: persona } = await supabase
-    .from('personas')
-    .select('id')
-    .eq('workspace_id', workspace?.id)
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .single()
+  // Resolves the ACTIVE workspace (respecting the sidebar switcher, falling
+  // back to most-recently-created) — see lib/active-workspace.ts. The
+  // previous plain `.eq('owner_id', ...).single()` here silently assumed
+  // every account has exactly one workspace; with multi-voice accounts now a
+  // real thing, `.single()` on 2+ rows would have thrown instead of picking
+  // one, breaking this page entirely for anyone with a second voice.
+  const { active: workspace } = await resolveWorkspaces(supabase, user!.id)
 
   const [{ data: recentContent }, { data: approvals }] = await Promise.all([
     supabase
@@ -54,8 +49,8 @@ export default async function DashboardPage() {
       .limit(200),
   ])
 
-  const cadence = workspace && persona
-    ? await loadCadence(workspace.id, persona.id)
+  const cadence = workspace && workspace.persona_id
+    ? await loadCadence(workspace.id, workspace.persona_id)
     : undefined
 
   const nudgeState = computeNudge(

@@ -14,6 +14,10 @@ export interface Persona {
   workspace_id: string
   name: string
   display_name: string
+  // Short user-set label distinguishing this voice from others on the same
+  // account (e.g. "Personal brand" vs "Acme Inc."). Null for personas created
+  // before this field existed.
+  voice_label: string | null
   active_rag_count: number
   created_at: string
 }

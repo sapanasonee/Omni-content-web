@@ -54,6 +54,9 @@ export const INPUT_LIMITS = {
   comment_post: 6_000,
   // The user's optional angle for the comment — a steer, not an essay.
   comment_angle: 500,
+  // Short label distinguishing one voice/workspace from another on the same
+  // account (e.g. "Personal brand"). A chip label, not a description.
+  voice_label: 80,
 } as const
 
 // Uniform 400 for an oversized field. Field name and ceiling are included so

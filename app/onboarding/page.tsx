@@ -380,6 +380,11 @@ export default function OnboardingPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [activationIds, setActivationIds] = useState<{ workspace_id: string; persona_id: string } | null>(null)
+  // Short label distinguishing this voice from others on the same account
+  // (e.g. "Personal brand" vs "Acme Inc.") — persona metadata for the
+  // workspace switcher, not part of Brand DNA, so it's not in useOnboarding's
+  // `data`. Optional: the API falls back to industry if left blank.
+  const [voiceLabel, setVoiceLabel] = useState('')
 
   // ─── Voice intro state ────────────────────────────────────────
   const MAX_RECORD_SECONDS = 90
@@ -495,7 +500,7 @@ export default function OnboardingPage() {
       const res = await fetch('/api/onboarding', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, voice_label: voiceLabel }),
       })
       if (!res.ok) {
         const err = await res.json()
@@ -739,6 +744,22 @@ export default function OnboardingPage() {
           {/* Step 1 â€” Identity */}
           {step === 1 && (
             <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  What&apos;s this voice for? <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={voiceLabel}
+                  onChange={e => setVoiceLabel(e.target.value)}
+                  placeholder="Personal brand, Acme Inc., ..."
+                  maxLength={80}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#534AB7]/30 focus:border-[#534AB7]"
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  Only matters if you&apos;re setting up more than one voice on this account — helps you tell them apart later.
+                </p>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Your full name</label>
                 <input

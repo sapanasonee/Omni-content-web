@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import type { Workspace, Persona } from '@/lib/types'
+import type { WorkspaceVoice } from '@/lib/active-workspace'
 import {
   PenLine,
   MessageSquare,
@@ -12,14 +12,15 @@ import {
   Dna,
   LayoutDashboard,
   ChevronDown,
+  Plus,
   LogOut,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
 
 interface SidebarProps {
-  workspace: Workspace
-  personas: Persona[]
+  activeWorkspaceId: string
+  generationsUsed: number
+  voices: WorkspaceVoice[]
   userEmail: string
 }
 
@@ -31,11 +32,42 @@ const NAV_ITEMS = [
   { href: '/dna', label: 'Brand DNA', icon: Dna },
 ]
 
-export default function Sidebar({ workspace, personas, userEmail }: SidebarProps) {
+function voiceLabelOf(v: WorkspaceVoice): string {
+  return v.voice_label || v.persona_display_name || 'Untitled voice'
+}
+
+export default function Sidebar({ activeWorkspaceId, generationsUsed, voices, userEmail }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const [personaOpen, setPersonaOpen] = useState(false)
-  const [activePersona, setActivePersona] = useState<Persona>(personas[0])
+  const [switcherOpen, setSwitcherOpen] = useState(false)
+  const [switching, setSwitching] = useState(false)
+
+  const active = voices.find(v => v.id === activeWorkspaceId) ?? voices[0]
+  const others = voices.filter(v => v.id !== active?.id)
+
+  async function switchTo(workspaceId: string) {
+    if (switching || workspaceId === active?.id) {
+      setSwitcherOpen(false)
+      return
+    }
+    setSwitching(true)
+    try {
+      const res = await fetch('/api/workspace/switch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workspace_id: workspaceId }),
+      })
+      if (res.ok) {
+        setSwitcherOpen(false)
+        // Every page resolves its workspace/persona via a fresh /api/me call —
+        // a full reload is the simplest way to make all of them (and this
+        // server-rendered layout) pick up the newly active workspace.
+        window.location.reload()
+      }
+    } finally {
+      setSwitching(false)
+    }
+  }
 
   async function handleSignOut() {
     const supabase = createClient()
@@ -54,53 +86,52 @@ export default function Sidebar({ workspace, personas, userEmail }: SidebarProps
         </div>
       </div>
 
-      {/* Persona switcher */}
+      {/* Voice switcher */}
       <div className="px-3 py-3 border-b border-gray-100">
         <button
-          onClick={() => setPersonaOpen(!personaOpen)}
+          onClick={() => setSwitcherOpen(!switcherOpen)}
           className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
         >
           <div className="flex items-center gap-2 min-w-0">
             <div className="w-6 h-6 bg-[#EEEDFE] rounded-full flex items-center justify-center flex-shrink-0">
               <span className="text-xs font-medium text-[#534AB7]">
-                {activePersona?.display_name?.[0] || 'D'}
+                {active ? voiceLabelOf(active)[0] : 'V'}
               </span>
             </div>
             <span className="text-xs font-medium text-gray-700 truncate">
-              {activePersona?.display_name || 'Default'}
+              {active ? voiceLabelOf(active) : 'Voice'}
             </span>
           </div>
           <ChevronDown className={cn(
             'w-3.5 h-3.5 text-gray-400 transition-transform flex-shrink-0',
-            personaOpen && 'rotate-180'
+            switcherOpen && 'rotate-180'
           )} />
         </button>
 
-        {/* Persona dropdown */}
-        {personaOpen && personas.length > 1 && (
+        {switcherOpen && (
           <div className="mt-1 space-y-0.5">
-            {personas.map(persona => (
+            {others.map(voice => (
               <button
-                key={persona.id}
-                onClick={() => {
-                  setActivePersona(persona)
-                  setPersonaOpen(false)
-                }}
-                className={cn(
-                  'w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-colors',
-                  activePersona?.id === persona.id
-                    ? 'bg-[#EEEDFE] text-[#534AB7]'
-                    : 'text-gray-600 hover:bg-gray-50'
-                )}
+                key={voice.id}
+                disabled={switching}
+                onClick={() => switchTo(voice.id)}
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
-                <div className="w-5 h-5 bg-[#EEEDFE] rounded-full flex items-center justify-center">
+                <div className="w-5 h-5 bg-[#EEEDFE] rounded-full flex items-center justify-center flex-shrink-0">
                   <span className="text-xs font-medium text-[#534AB7]">
-                    {persona.display_name[0]}
+                    {voiceLabelOf(voice)[0]}
                   </span>
                 </div>
-                {persona.display_name}
+                <span className="truncate">{voiceLabelOf(voice)}</span>
               </button>
             ))}
+            <Link
+              href="/onboarding"
+              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-[#534AB7] hover:bg-[#EEEDFE] transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5 flex-shrink-0" />
+              Add another voice
+            </Link>
           </div>
         )}
       </div>
@@ -134,13 +165,13 @@ export default function Sidebar({ workspace, personas, userEmail }: SidebarProps
           <div className="flex items-center justify-between">
             <span className="text-xs text-gray-400">Generations</span>
             <span className="text-xs text-gray-500">
-              {workspace.generations_used}/30
+              {generationsUsed}/30
             </span>
           </div>
           <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
             <div
               className="h-full bg-[#534AB7] rounded-full transition-all"
-              style={{ width: `${Math.min((workspace.generations_used / 30) * 100, 100)}%` }}
+              style={{ width: `${Math.min((generationsUsed / 30) * 100, 100)}%` }}
             />
           </div>
         </div>

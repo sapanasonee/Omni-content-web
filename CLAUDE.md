@@ -204,6 +204,32 @@ Always `git checkout hardening-pass` and `git pull` before starting work.
     `lib/ai-tells.ts` after "leverage" appeared in a live generation, plus a
     jargon line in the generation guardrails; pinned by must-flag samples
     031–033.
+21. **Multi-voice workspace switcher** (`lib/active-workspace.ts`,
+    `/api/workspace/switch`): re-running `/onboarding` already created a
+    separate workspace + persona (up to `MAX_WORKSPACES_PER_USER = 3`), but
+    `/api/me` always silently resolved to the most-recently-created one, with
+    no way to pick an older voice back. Fixed by centralizing resolution in
+    `resolveWorkspaces()` (reads an httpOnly `vowwl_active_workspace` cookie,
+    re-validates ownership every time, falls back to most-recent) and adding
+    `POST /api/workspace/switch` (guarded by the standard
+    `requireWorkspaceOwnership`) to set it. `/api/me` and the dashboard
+    layout/page both now call `resolveWorkspaces()` instead of their own
+    independent "most recent" queries — the dashboard page's old query was a
+    latent bug in its own right (`.eq('owner_id', ...).single()` with no
+    ordering would have thrown for any account with 2+ workspaces, not
+    silently picked one). Onboarding sets the cookie to the newly created
+    workspace on success, so finishing a second voice's setup doesn't leave a
+    stale cookie pointing at the first one. Cross-voice data isolation itself
+    needed no new work — every persona-scoped route already runs
+    `requireWorkspaceOwnership` / `requirePersonaInWorkspace` before touching
+    anything, so a resolved-wrong workspace_id 404s rather than leaking; the
+    switcher only changes which id gets passed in, never who a route trusts.
+    New: `personas.voice_label` (migration
+    `20260825_persona_voice_label.sql`, **run it** or the switcher's per-voice
+    labels stay null) — an optional short label collected in onboarding step 1
+    ("What's this voice for?"), falling back to industry if left blank, shown
+    in the Sidebar switcher instead of `display_name` (which is just the
+    person's name and would be identical across every voice they onboard).
 
 ## Founder sign-in / new-user alerts
 
@@ -242,8 +268,8 @@ work/personal domains still pass.
 
 ## Schema / migrations
 
-Two migration files exist under `supabase/migrations/` — **written this
-session, not auto-applied**. Run them manually in the Supabase SQL Editor:
+Migration files under `supabase/migrations/` are **written across sessions,
+not auto-applied** — each needs a manual run in the Supabase SQL Editor:
 
 - `20260712_trending_cache.sql` — creates `trending_cache` + RLS policies.
   **User already created a same-named table manually with different columns
@@ -256,6 +282,11 @@ session, not auto-applied**. Run them manually in the Supabase SQL Editor:
 - `20260713_content_edits.sql` — creates `content_edits` (required for the
   rulebook feature to work at all — **confirm this has actually been run**
   before relying on rule suggestions in production).
+- `20260721_login_events.sql`, `20260721_waitlist.sql` — see the Founder
+  sign-in/alerts and Known gaps sections below for what each backs.
+- `20260825_persona_voice_label.sql` — adds `personas.voice_label` (see
+  session item 21 above); without it the workspace switcher's per-voice
+  labels are all null and fall back to the persona's `display_name`.
 
 No CHECK constraint exists on `contexts.status` (confirmed via screenshot) —
 `'suggested'` inserts fine as-is, no ALTER needed. If one is ever added, it

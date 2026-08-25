@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { resolveWorkspaces } from '@/lib/active-workspace'
 import { redirect } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 export const dynamic = 'force-dynamic'
@@ -12,28 +13,18 @@ export default async function DashboardLayout({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Get workspace and personas
-  const { data: workspace } = await supabase
-  .from('workspaces')
-  .select('*')
-  .eq('owner_id', user.id)
-  .order('created_at', { ascending: false })
-  .limit(1)
-  .single()
-  // If no workspace, redirect to onboarding
-  if (!workspace) redirect('/onboarding')
-
-  const { data: personas } = await supabase
-    .from('personas')
-    .select('*')
-    .eq('workspace_id', workspace.id)
-    .order('created_at', { ascending: true })
+  // The active workspace (respecting the switcher's cookie, falling back to
+  // most-recently-created — see lib/active-workspace.ts) plus every voice on
+  // the account, for the Sidebar switcher.
+  const { active, voices } = await resolveWorkspaces(supabase, user.id)
+  if (!active) redirect('/onboarding')
 
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar
-        workspace={workspace}
-        personas={personas || []}
+        activeWorkspaceId={active.id}
+        generationsUsed={active.generations_used}
+        voices={voices}
         userEmail={user.email || ''}
       />
       <main className="flex-1 overflow-auto">

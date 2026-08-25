@@ -5,6 +5,8 @@ import type { BrandDNA } from '@/lib/types'
 import { normalizeSections } from '@/lib/brand-dna-schema'
 import { evaluateSignupEmail, isExemptExistingAccount } from '@/lib/signup-policy'
 import { sendFounderAlert } from '@/lib/founder-alert'
+import { INPUT_LIMITS, rejectOversized } from '@/lib/input-limits'
+import { ACTIVE_WORKSPACE_COOKIE } from '@/lib/active-workspace'
 
 function getBucket() {
   const storage = new Storage({ projectId: process.env.GCP_PROJECT_ID })
@@ -52,10 +54,20 @@ export async function POST(request: Request) {
     //    hope about client behavior. The old direct property access
     //    (`data.identity.full_name`) also threw on absent `identity`,
     //    turning bad requests into opaque 500s instead of 400s.
-    const data = normalizeSections(await request.json())
+    const rawBody = await request.json()
+    const data = normalizeSections(rawBody)
     if (!data) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
+
+    // voice_label is persona-table metadata (which voice this is, e.g.
+    // "Personal brand"), not Brand DNA content — deliberately kept outside
+    // normalizeSections/OnboardingData, which only handles what gets written
+    // into brand_dna.json. Optional: falls back to industry below if blank,
+    // so the workspace switcher never shows an empty label.
+    const voiceLabel = typeof rawBody?.voice_label === 'string' ? rawBody.voice_label.trim() : ''
+    const oversized = rejectOversized([['voice_label', voiceLabel, INPUT_LIMITS.voice_label]])
+    if (oversized) return oversized
 
     // 4. Cap workspaces per account before creating another one.
     //
@@ -108,6 +120,7 @@ export async function POST(request: Request) {
         workspace_id: workspace.id,
         name: 'default',
         display_name: data.identity.full_name,
+        voice_label: voiceLabel || data.identity.industry,
         active_rag_count: 0,
       })
       .select()
@@ -155,12 +168,24 @@ export async function POST(request: Request) {
         `Time:     ${new Date().toISOString()}\n`,
     )
 
-    // 10. Return success
-    return NextResponse.json({
+    // 10. Return success — and make this brand-new workspace the active one.
+    // Without this, a stale active-workspace cookie from a PREVIOUS voice
+    // would make /api/me keep resolving to the old workspace instead of the
+    // one the user just finished creating, silently reviving the exact
+    // cross-voice mismatch this feature exists to prevent.
+    const res = NextResponse.json({
       success: true,
       workspace_id: workspace.id,
       persona_id: persona.id,
     })
+    res.cookies.set(ACTIVE_WORKSPACE_COOKIE, workspace.id, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 365,
+    })
+    return res
 
   } catch (error) {
     console.error('Onboarding error:', error)
