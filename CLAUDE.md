@@ -231,6 +231,53 @@ Always `git checkout hardening-pass` and `git pull` before starting work.
     in the Sidebar switcher instead of `display_name` (which is just the
     person's name and would be identical across every voice they onboard).
 
+22. **Security fixes from the pen-test pass** (`lib/rate-limit.ts`):
+    - **Activation-flag spend bypass (was: unlimited free generations).**
+      `/api/generate` exempted a request when `activation === true &&
+      generations_used < 3` — but the activation branch skips the increment
+      RPC, so `generations_used` never moved on that path. On any workspace
+      under 3 metered generations, `{"activation": true}` was replayable
+      forever: every call re-read the same stale 0 and spent Gemini tokens
+      free. Now measured against the workspace's own `content_pieces` count —
+      the one counter the exempt path does advance (every completed generation
+      inserts a row; nothing in the app ever deletes one, so it rises
+      monotonically and the caller can't reset it). **Fails closed**: if the
+      count can't be read the request is metered, deliberately inverting this
+      codebase's usual degrade-open posture, because open here means unmetered
+      spend on our account. Residual: concurrent requests below the allowance
+      can all be exempted in one burst (that is what legitimate onboarding
+      does — it fires 3 drafts in parallel), so abuse is bounded to one burst
+      per workspace instead of an unlimited loop. Closing that needs an atomic
+      DB-side reservation for activation drafts.
+    - **Rate limiting on the unauthenticated endpoints.** `/api/waitlist` and
+      `/api/notify-signin` take no auth and each writes a row + sends founder
+      mail, so unthrottled they were free amplifiers (inbox flood, Resend
+      quota/reputation burn, fabricated rows poisoning the very analytics
+      those tables exist for). `lib/rate-limit.ts` is an in-memory sliding
+      window with a per-IP cap AND a global cap (IP rotation moves an attacker
+      into the global bucket instead of escaping), a bounded/pruned key map so
+      the limiter isn't itself a memory-DoS vector, and honest limits: state
+      is **per Cloud Run instance**, so the effective ceiling is
+      instances × max — a blast-radius reducer, not a distributed guarantee.
+      Add shared state (Postgres/Redis) if these are ever seriously targeted.
+      Waitlist returns 429 + `Retry-After` (the form shows a distinct message
+      that neither claims success nor invites a retry loop); notify-signin
+      silently drops the work and still returns `{ok:true}`, preserving its
+      contract that the requester learns nothing and login is never affected.
+    - **Note:** `/api/notify-signin` self-expired on 2026-08-21 and currently
+      no-ops before doing any work, so the only LIVE amplifier at fix time was
+      `/api/waitlist`; the limiter there is pre-emptive for if `NOTIFY_UNTIL`
+      is ever extended. The login page still fetches that dead endpoint on
+      every sign-in — removing both is overdue cleanup (see below).
+    - Still open from the same pass: critical Next.js CVE (14.2.35, 16 npm
+      vulns, all fixable), unmetered `/api/voice-extract` (auth'd but no quota
+      or rate limit — a 15MB audio Gemini call per request), prompt injection
+      via the pasted post in `/api/comment` (the `"""` fence is escapable and
+      the post is third-party text), `X-Forwarded-Host` trusted unvalidated to
+      build the post-login redirect in `app/auth/callback/route.ts`, and no
+      security headers at all in `next.config.mjs` (no CSP/HSTS/frame-ancestors
+      → authenticated one-click actions are clickjackable).
+
 ## Founder sign-in / new-user alerts
 
 Two alerts to `spnsn9@gmail.com`, both via the shared best-effort

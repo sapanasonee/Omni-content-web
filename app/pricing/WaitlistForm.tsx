@@ -8,7 +8,7 @@ import { useState } from 'react'
 // errors let the user retry.
 export default function WaitlistForm({ tier }: { tier: string }) {
   const [email, setEmail] = useState('')
-  const [status, setStatus] = useState<'idle' | 'submitting' | 'done' | 'error'>('idle')
+  const [status, setStatus] = useState<'idle' | 'submitting' | 'done' | 'error' | 'throttled'>('idle')
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -20,6 +20,16 @@ export default function WaitlistForm({ tier }: { tier: string }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), tier }),
       })
+      // 429 is kept distinct from a real failure. The common cause is someone
+      // who already joined submitting again, and "something went wrong — try
+      // again" would both misdescribe that and push them to retry into the
+      // same limit. It is NOT reported as success either: a first-time visitor
+      // caught by the global cap genuinely isn't on the list yet, and a false
+      // confirmation would leave them waiting on a follow-up that never comes.
+      if (res.status === 429) {
+        setStatus('throttled')
+        return
+      }
       if (!res.ok) throw new Error()
       setStatus('done')
     } catch {
@@ -54,6 +64,11 @@ export default function WaitlistForm({ tier }: { tier: string }) {
       </button>
       {status === 'error' && (
         <p className="text-xs text-red-600 text-center">Something went wrong — try again.</p>
+      )}
+      {status === 'throttled' && (
+        <p className="text-xs text-gray-500 text-center">
+          If you already submitted, you&apos;re on the list. Otherwise give it a few minutes and try again.
+        </p>
       )}
     </form>
   )

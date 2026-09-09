@@ -9,6 +9,12 @@ import { INPUT_LIMITS, rejectOversized } from '@/lib/input-limits'
 import { readGoodSamples } from '@/lib/brand-dna-schema'
 import { loadVoiceProfile, observedVoiceBlock } from '@/lib/voice-profile'
 
+// How many quota-exempt drafts a workspace gets for the onboarding activation
+// moment. Measured against the workspace's own content_pieces count (the only
+// counter the exempt path actually advances) — see the activation check below
+// for why generations_used cannot be used for this.
+const ACTIVATION_DRAFT_ALLOWANCE = 3
+
 const FORMAT_INSTRUCTIONS: Record<ContentFormat, string> = {
   linkedin: 'LinkedIn post. Max 1300 characters. Short paragraphs. Max 4 hashtags at the end only. Start with a hook. End with insight or question.',
   twitter: 'Twitter/X post. Max 280 characters. One idea. Punchy and direct. No hashtags.',
@@ -400,11 +406,49 @@ Output only the final content — no preamble, no labels, just the content itsel
     // better than the reverse (spend-then-count), where an attacker aims the
     // failure/race at the counter and burns OUR tokens without limit.
     //
-    // Activation drafts (onboarding's first three) stay quota-exempt — but the
-    // exemption is recomputed server-side from generations_used < 3, so the
-    // client-supplied `activation` flag can't be replayed later for free
-    // generations.
-    const isActivation = activation === true && (workspace.generations_used ?? 0) < 3
+    // Activation drafts (onboarding's first three) stay quota-exempt, but the
+    // exemption has to be proven against a counter the exempt path itself
+    // advances. It previously keyed off `generations_used < 3` — and because
+    // the activation branch skips the increment RPC entirely, that counter
+    // never moved on the activation path. On any workspace still under 3
+    // metered generations, `{"activation": true}` was therefore replayable
+    // without limit: every request re-read the same stale 0, took the
+    // exemption, and spent Gemini tokens for free. The comment claiming the
+    // flag "can't be replayed later" only held once three NON-activation
+    // generations had happened, which an abuser would simply never do.
+    //
+    // Counting the workspace's own content_pieces fixes that, because it is
+    // the one signal the exempt path DOES advance: every completed generation
+    // (activation included) inserts exactly one row, and nothing in the app
+    // ever deletes one, so the count rises monotonically and cannot be reset
+    // by the caller.
+    //
+    // Fails CLOSED: if the count can't be read, the request is metered rather
+    // than exempted. Everywhere else in this codebase an infrastructure
+    // hiccup degrades toward letting the user through — but this is the one
+    // branch where "degrade open" means "unmetered spend on our account", so
+    // it degrades the other way.
+    //
+    // Residual: three concurrent requests issued while the count is still
+    // below the allowance can all read the same value and all be exempted —
+    // which is exactly what legitimate onboarding does (it fires its three
+    // drafts in parallel). That bounds abuse to a single burst per workspace
+    // instead of an unlimited loop, and MAX_WORKSPACES_PER_USER bounds the
+    // number of workspaces. Closing the burst window entirely needs an atomic
+    // DB-side reservation for activation drafts too.
+    let isActivation = false
+    if (activation === true) {
+      const { count, error: activationCountError } = await supabase
+        .from('content_pieces')
+        .select('id', { count: 'exact', head: true })
+        .eq('workspace_id', workspace_id)
+
+      if (activationCountError) {
+        console.error('Activation allowance check failed (metering this request):', activationCountError)
+      } else {
+        isActivation = (count ?? ACTIVATION_DRAFT_ALLOWANCE) < ACTIVATION_DRAFT_ALLOWANCE
+      }
+    }
     if (!isActivation) {
       const { data: quota, error: quotaError } = await supabase
         .rpc('increment_generation_count', { p_workspace_id: workspace_id })

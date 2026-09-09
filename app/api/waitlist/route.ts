@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { sendFounderAlert } from '@/lib/founder-alert'
+import { checkRateLimit, clientKey } from '@/lib/rate-limit'
 
 // Public waitlist capture for not-yet-purchasable tiers on /pricing. No auth
 // (marketing page). Persists to the sealed waitlist table via the
@@ -10,6 +11,12 @@ import { sendFounderAlert } from '@/lib/founder-alert'
 // deploys and only gains durable storage once the migration is applied.
 const ALLOWED_TIERS = ['studio', 'agency']
 
+// Joining a waitlist is a once-per-person action, so the honest ceiling is
+// low. Every accepted request emails the founder and writes a row, which is
+// exactly what makes an unthrottled version a free amplifier — see
+// lib/rate-limit.ts for what this does and does not guarantee.
+const RATE_LIMIT = { windowMs: 60 * 60 * 1000, max: 3, globalMax: 60 }
+
 export async function POST(request: Request) {
   try {
     const { email, tier } = await request.json()
@@ -17,6 +24,16 @@ export async function POST(request: Request) {
     const t = typeof tier === 'string' && ALLOWED_TIERS.includes(tier) ? tier : ''
     if (!clean || !clean.includes('@') || clean.length > 200 || !t) {
       return NextResponse.json({ error: 'Invalid email or tier' }, { status: 400 })
+    }
+
+    // Checked AFTER validation so malformed junk can't burn a real visitor's
+    // allowance, and BEFORE the RPC/email so a throttled request costs nothing.
+    const limit = checkRateLimit(`waitlist:${clientKey(request)}`, RATE_LIMIT)
+    if (!limit.allowed) {
+      return NextResponse.json(
+        { error: "You're already on the list — we'll be in touch shortly." },
+        { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } },
+      )
     }
 
     // Persist (non-fatal — no-op if the migration hasn't been applied).
