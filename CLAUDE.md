@@ -365,6 +365,29 @@ error, check the live schema before assuming the code is wrong.
   fixed it. Since `www.vowwl.com` turned out to be live-mapped too, not a
   Hostinger placeholder, its own redirect entry was added preemptively to
   avoid the same failure mode on that host).
+- **Supabase is on the FREE tier, which auto-pauses after ~7 days of
+  inactivity — and a paused project is a total outage** (login, dashboard,
+  generation, all of it), with no warning to you or to users. Happened
+  2026-09-14: login showed a red **"Failed to fetch"**, which is not an app
+  bug — that string is a browser `TypeError` from `fetch`, surfaced through
+  `otpError.message` in `app/(auth)/login/page.tsx`, meaning the browser
+  could not reach Supabase at all.
+  **Diagnose it in ten seconds** rather than reading code: look up the
+  project host (`pjbeilukqzqkzsluggan.supabase.co`, the ref is in
+  `Dockerfile:14` and inside the anon key's JWT payload). **NXDOMAIN = the
+  project is paused or deleted** — Supabase withdraws DNS for both and does
+  NOT wildcard `*.supabase.co`, so a fabricated ref fails identically.
+  Anything that resolves is a different problem. Fix: Supabase dashboard →
+  Restore. Same ref comes back, so no code change and no redeploy; paused is
+  not deleted, data is intact. Upgrading to Pro removes auto-pause — worth it
+  once losing a user to a silent outage would actually cost something.
+- `Dockerfile:14-15` hardcodes `NEXT_PUBLIC_SUPABASE_URL` and the anon key as
+  build-ARG **defaults**. The anon key being in the repo is fine by design
+  (it ships to every browser; RLS is the real protection). The trap is the
+  defaulting: after any migration to a NEW Supabase project, a build without
+  explicit env overrides silently bakes in the dead ref and fails exactly
+  like the pause above, with no obvious cause. Make these required rather
+  than defaulted if that migration ever happens.
 - No billing/Stripe integration exists anywhere. `plan_tier` is a column with
   no enforcement beyond the solo-tier generation cap. Don't imply paid-plan
   differentiation in marketing copy until this is real.
