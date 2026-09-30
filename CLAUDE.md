@@ -1,3 +1,23 @@
+# ⚠️ Repurposed 2026-09-30 — vowwl.com is now a one-page proof-capture site
+
+vowwl.com now serves a single static page for a different product under the
+same name: **proof capture for technical services firms** (navy + amber,
+IBM Plex). Everything below this banner describes the *retired* voice/content
+product and is kept only as history.
+
+- New site: `app/page.tsx` (markup), `app/site.css` (styles, verbatim from the
+  approved design file), `app/layout.tsx` (metadata + Google Fonts link).
+  Contact links are the `BOOK_CALL_URL` / `LINKEDIN_URL` constants at the top
+  of `app/page.tsx`.
+- `middleware.ts` 307-redirects every path except `/` to `/` (old pages,
+  `/api/*`, typos). The old product can't be reached or called.
+- The old `app/` and `middleware.ts` are parked, unchanged, in `legacy/`
+  (excluded from the build via `tsconfig.json`). Restore steps:
+  `legacy/README.md`. `components/`, `lib/`, `supabase/` etc. were left in place.
+- Deploy is unchanged: `gcloud run deploy omni-content-web --source . --region us-central1`.
+
+---
+
 # Vowwl (was "Omni Content Agent") — Project State
 
 Read this before touching anything. It's the handoff from a long working
