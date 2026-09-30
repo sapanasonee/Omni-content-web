@@ -1,22 +1,22 @@
-import type { Metadata } from "next";
-import localFont from "next/font/local";
-import "./globals.css";
+import type { Metadata, Viewport } from "next";
+import "./site.css";
 
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
-  variable: "--font-geist-sans",
-  weight: "100 900",
-});
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff",
-  variable: "--font-geist-mono",
-  weight: "100 900",
-});
+// Root layout for the one-page proof-capture site. The previous product's
+// layout (Geist fonts + Tailwind globals) is parked in legacy/voice-product-app.
 
+// Title/description copied exactly from the design file's <head>.
 export const metadata: Metadata = {
-  title: "Vowwl: Sound like you, not a robot",
+  title: "Vowwl — Catch the proof before it disappears",
   description:
-    "Vowwl learns your voice from how you write and edit, then drafts LinkedIn posts, tweets, newsletters and more that actually sound like you.",
+    "Vowwl captures the proof your projects already generate, before it disappears, and turns it into finished success stories. Without adding work to your delivery team.",
+};
+
+// Mirrors the design's viewport meta. viewport-fit=cover lets the sticky
+// top bar use env(safe-area-inset-top) on notched phones.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -26,11 +26,19 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
-      </body>
+      <head>
+        {/* IBM Plex Serif/Sans loaded from Google Fonts with the exact same
+            URL as the design file, so weights/italics match 1:1. A plain
+            <link> (not next/font) keeps the build free of font downloads. */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+        <link
+          href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body>{children}</body>
     </html>
   );
 }
