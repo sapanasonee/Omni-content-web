@@ -5,9 +5,10 @@
 // render identically.
 
 // ---- Contact links: the only values expected to change -------------------
-// TODO(owner): replace with the real Calendly link. Until then the CTA falls
-// back to the design file's email placeholder.
-const BOOK_CALL_URL = "mailto:hello@vowwl.com";
+// Owner's Calendly booking page (replaced the design file's mailto placeholder).
+// Note: the event type is 30 minutes while the button says "15-minute"; switch
+// to a 15-minute Calendly event here if/when one exists.
+const BOOK_CALL_URL = "https://calendly.com/sonisapna45/30min";
 // TODO(owner): confirm the exact LinkedIn profile URL (value from design file).
 const LINKEDIN_URL = "https://www.linkedin.com/in/sapana-sonee";
 
@@ -145,7 +146,8 @@ export default function Home() {
           <h2>If your work is stronger than your case studies, that&apos;s the gap we close.</h2>
           <p>Tell me about a project you&apos;re proud of. If there&apos;s a fit, we&apos;ll run one story end to end and you&apos;ll see exactly what your proof looks like when someone catches it in time.</p>
           <div className="cta-actions">
-            <a href={BOOK_CALL_URL} className="btn-primary">Book a 15-minute call</a>
+            {/* Opens Calendly in a new tab, like the LinkedIn link, so the site stays open */}
+            <a href={BOOK_CALL_URL} className="btn-primary" target="_blank" rel="noopener">Book a 15-minute call</a>
             <a href={LINKEDIN_URL} className="btn-text" target="_blank" rel="noopener">Connect on LinkedIn</a>
           </div>
         </div>
