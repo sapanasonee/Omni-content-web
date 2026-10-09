@@ -17,6 +17,9 @@ export const metadata: Metadata = {
   title: "Vowwl: Sound like you, not a robot",
   description:
     "Vowwl learns your voice from how you write and edit, then drafts LinkedIn posts, tweets, newsletters and more that actually sound like you.",
+  // Private invite-only demo: keep it out of search results so it never
+  // competes with the public vowwl.com site.
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({

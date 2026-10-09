@@ -1,9 +1,10 @@
-﻿ 'use client'
+ 'use client'
 
 import { Suspense, useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { evaluateSignupEmail } from '@/lib/signup-policy'
+import { NOT_INVITED_MESSAGE } from '@/lib/demo-access'
 
 const CALENDLY_URL = 'https://calendly.com/sonisapna45/30min'
 
@@ -20,6 +21,11 @@ function LoginForm() {
   useEffect(() => {
     if (searchParams.get('error') === 'auth_failed') {
       setError('The sign-in link expired or is invalid. Please request a new one.')
+    }
+    // Set by middleware.ts when a signed-in account is not on the demo
+    // invite list (its session has already been cleared by then).
+    if (searchParams.get('error') === 'not_invited') {
+      setBlockedReason(NOT_INVITED_MESSAGE)
     }
   }, [searchParams])
 
@@ -39,6 +45,24 @@ function LoginForm() {
     const verdict = evaluateSignupEmail(email)
     if (!verdict.allowed) {
       setBlockedReason(verdict.reason || 'Please use a valid work or personal email.')
+      setLoading(false)
+      return
+    }
+
+    // Invite-only demo: ask the server whether this email is on the list
+    // BEFORE sending a magic link, so uninvited people get a clear message
+    // and no Supabase account is created for them. middleware.ts enforces
+    // the same list on every request; this is just the friendly front door.
+    // Any failure here (network, bad response) is treated as "not invited".
+    const access = await fetch('/api/demo-access', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    })
+      .then((res) => res.json())
+      .catch(() => ({ allowed: false }))
+    if (!access.allowed) {
+      setBlockedReason(access.reason || NOT_INVITED_MESSAGE)
       setLoading(false)
       return
     }
@@ -107,7 +131,7 @@ function LoginForm() {
           <div className="px-4 py-3 rounded-lg bg-amber-50 border border-amber-200 space-y-2.5">
             <p className="text-sm text-amber-800">{blockedReason}</p>
             <p className="text-xs text-amber-700">
-              Don&apos;t have a work email but want Vowwl? Grab a slot and we&apos;ll get you set up.
+              Want access? Grab a slot and we&apos;ll get you set up.
             </p>
             <a
               href={CALENDLY_URL}

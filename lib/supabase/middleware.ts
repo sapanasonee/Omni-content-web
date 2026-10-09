@@ -26,8 +26,9 @@ export async function updateSession(request: NextRequest) {
   )
 
   // Only refresh the session — do NOT redirect here
-  // Redirects are handled by individual layouts
-  await supabase.auth.getUser()
+  // Redirects are handled by individual layouts (and the demo invite gate in
+  // middleware.ts, which is why the user is returned alongside the response).
+  const { data: { user } } = await supabase.auth.getUser()
 
-  return supabaseResponse
+  return { response: supabaseResponse, user }
 }

@@ -1,3 +1,19 @@
+# 🔒 This branch = the PRIVATE, invite-only demo of the voice product
+
+vowwl.com now serves a different one-page site (see `hardening-pass`). This
+branch is the voice/content product frozen at its last commit (`92ea9f6`),
+plus an invite gate, deployed as a SEPARATE Cloud Run service for demos.
+
+- Who can use it: the `DEMO_ALLOWED_EMAILS` env var on the demo service
+  (comma-separated). Empty/unset = nobody. Logic: `lib/demo-access.ts`;
+  enforced in `middleware.ts` (authoritative) and pre-checked on the login
+  page via `/api/demo-access` (no magic link for uninvited emails).
+- `noindex` on every page; auth callback redirects to the request's own host.
+- Deploy: `gcloud run deploy vowwl-demo --source . --region us-central1`
+  (+ the demo URL in Supabase Auth redirect allowlist).
+
+---
+
 # Vowwl (was "Omni Content Agent") — Project State
 
 Read this before touching anything. It's the handoff from a long working
