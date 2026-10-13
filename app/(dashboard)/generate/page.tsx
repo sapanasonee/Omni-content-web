@@ -64,6 +64,15 @@ export default function GeneratePage() {
   const [topicsLoading, setTopicsLoading] = useState(false)
   const [topicsError, setTopicsError] = useState<string | null>(null)
 
+  // Research state — real, verified links the user can hand to the writer.
+  // Anything NOT checked here (and anything the model types on its own) gets
+  // stripped from the draft server-side; see stripFabricatedLinks in
+  // app/api/generate/route.ts.
+  const [researchSources, setResearchSources] = useState<{ title: string; url: string }[] | null>(null)
+  const [researchLoading, setResearchLoading] = useState(false)
+  const [researchError, setResearchError] = useState<string | null>(null)
+  const [selectedSources, setSelectedSources] = useState<Set<string>>(new Set())
+
   // Voice check state
   const [voiceCheck, setVoiceCheck] = useState<VoiceCheck | null>(null)
   const [showVoiceCheckDetails, setShowVoiceCheckDetails] = useState(false)
@@ -193,6 +202,49 @@ export default function GeneratePage() {
     setInput(`${topic.title}\n\nAngle: ${topic.content_angle}`)
   }
 
+  // ─── Research ─────────────────────────────────────────────────
+  // One grounded search call; returns only links Google Search itself found,
+  // never anything the writer model made up. Checking a source here is what
+  // lets the writer cite it — see the allowed_sources field in handleGenerate.
+  async function handleResearch() {
+    if (!input.trim()) return
+    setResearchLoading(true)
+    setResearchError(null)
+    setResearchSources(null)
+    setSelectedSources(new Set())
+    try {
+      const meta = await (await fetch('/api/me')).json()
+      const res = await fetch('/api/research', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workspace_id: meta.workspace_id,
+          persona_id: meta.persona_id,
+          query: input,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Research failed')
+      setResearchSources(data.sources || [])
+      // Pre-select everything found — the user unchecks what they don't want
+      // cited rather than having to opt in to each one.
+      setSelectedSources(new Set((data.sources || []).map((s: { url: string }) => s.url)))
+    } catch (err) {
+      setResearchError(err instanceof Error ? err.message : 'Research failed')
+    } finally {
+      setResearchLoading(false)
+    }
+  }
+
+  function toggleSource(url: string) {
+    setSelectedSources(prev => {
+      const next = new Set(prev)
+      if (next.has(url)) next.delete(url)
+      else next.add(url)
+      return next
+    })
+  }
+
   // ─── Generate ─────────────────────────────────────────────────
 
   // `rejectedDraft` turns a retry into a revision: the route needs the text it
@@ -244,6 +296,7 @@ export default function GeneratePage() {
           one_time_context: oneTimeContext.trim() || undefined,
           correction: correction?.trim() || undefined,
           rejected_draft: rejectedDraft?.trim() || undefined,
+          allowed_sources: selectedSources.size > 0 ? Array.from(selectedSources) : undefined,
         }),
       })
 
@@ -665,6 +718,53 @@ export default function GeneratePage() {
             placeholder={currentMode.placeholder}
             className="w-full h-full min-h-40 text-sm text-gray-800 placeholder-gray-400 resize-none focus:outline-none"
           />
+
+          {/* Real-source research — Brief mode only (raw/describe inputs
+              aren't a search query). Only checked sources below are allowed
+              into the draft; everything else gets stripped automatically. */}
+          {mode === 'brief' && (
+            <div className="mt-2 pt-2 border-t border-gray-50">
+              <button
+                onClick={handleResearch}
+                disabled={!input.trim() || researchLoading}
+                className="text-xs font-medium text-[#534AB7] hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {researchLoading ? 'Searching…' : '🔍 Find real sources'}
+              </button>
+              {researchError && (
+                <p className="mt-1 text-xs text-red-600">{researchError}</p>
+              )}
+              {researchSources && (
+                researchSources.length > 0 ? (
+                  <div className="mt-2 space-y-1.5">
+                    <p className="text-xs text-gray-400">
+                      Check what the writer may cite — anything else gets removed automatically.
+                    </p>
+                    {researchSources.map(s => (
+                      <label key={s.url} className="flex items-start gap-1.5 text-xs">
+                        <input
+                          type="checkbox"
+                          checked={selectedSources.has(s.url)}
+                          onChange={() => toggleSource(s.url)}
+                          className="mt-0.5 shrink-0"
+                        />
+                        <a
+                          href={s.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-gray-600 hover:text-[#534AB7] hover:underline truncate"
+                        >
+                          {s.title}
+                        </a>
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-1 text-xs text-gray-400">No sources found for this.</p>
+                )
+              )}
+            </div>
+          )}
         </div>
 
         {/* Context section */}

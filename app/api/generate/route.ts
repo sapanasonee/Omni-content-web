@@ -52,6 +52,60 @@ function getModel() {
 const RAG_EXAMPLE_COUNT = 3
 const RAG_EXAMPLE_MAX_CHARS = 1200
 
+// ─── Fabricated-link safety net ──────────────────────────────────────────────
+//
+// The writer model below has no web access, so any URL it types is typed from
+// memory — plausible-looking, frequently dead. lib/research.ts gives the user
+// a way to hand it REAL links (pulled straight from Google Search results);
+// this is the backstop for every other case: it strips any URL that isn't one
+// of those verified sources, so an invented link can never reach the user.
+const URL_PATTERN = /https?:\/\/[^\s)\]}>"']+/gi
+const MAX_ALLOWED_SOURCES = 10
+
+function hostnameOf(url: string): string | null {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '').toLowerCase()
+  } catch {
+    return null
+  }
+}
+
+// Removes every URL in `text` that doesn't match an allowed source's hostname,
+// plus the now-dangling "Reference:"/"Source:" label line it leaves behind.
+// Hostname (not exact-URL) match because the model may reasonably drop a
+// tracking query string or trailing slash while still citing the real page.
+function stripFabricatedLinks(
+  text: string,
+  allowedSources: string[],
+): { text: string; removedCount: number } {
+  if (!text) return { text, removedCount: 0 }
+  const allowedHosts = new Set(
+    allowedSources.map(hostnameOf).filter((h): h is string => h !== null)
+  )
+
+  let removedCount = 0
+  let cleaned = text.replace(URL_PATTERN, (match) => {
+    // Drop common trailing punctuation that isn't part of the URL itself
+    // ("...the-article." at the end of a sentence).
+    const trimmed = match.replace(/[.,;:!?]+$/, '')
+    const host = hostnameOf(trimmed)
+    if (host && allowedHosts.has(host)) return match
+    removedCount++
+    return ''
+  })
+
+  if (removedCount > 0) {
+    cleaned = cleaned
+      .split('\n')
+      .filter((line) => !/^\s*(reference|references|source|sources|read more|link)s?:?\s*$/i.test(line))
+      .join('\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
+  }
+
+  return { text: cleaned, removedCount }
+}
+
 // Persona-scoped retrieval for generation-time grounding. Reads the active RAG
 // set straight from Supabase (the authoritative copy) rather than querying Vertex
 // AI Search: the search index is imported as unstructured `content`, so it carries
@@ -125,8 +179,16 @@ export async function POST(request: Request) {
       topic, raw_input, description,
       tone_override, generation_mode,
       campaign_context_id, one_time_context,
-      activation, correction, rejected_draft
+      activation, correction, rejected_draft,
+      allowed_sources,
     } = await request.json()
+
+    // Real links the user picked from /api/research — the only URLs the
+    // writer is allowed to cite. Capped and type-checked since this feeds
+    // straight into the prompt and the post-generation link filter below.
+    const allowedSources: string[] = Array.isArray(allowed_sources)
+      ? allowed_sources.filter((s): s is string => typeof s === 'string').slice(0, MAX_ALLOWED_SOURCES)
+      : []
 
     if (!workspace_id || !persona_id || !format) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -325,6 +387,21 @@ ${correctionText}
     // Best-content samples the user pasted at onboarding (up to 3). Presented
     // as multiple exemplars so the model learns the range they like, not one
     // template. Falls back to the legacy single `good` string via readGoodSamples.
+    // Verified sources block — only present when the user ran /api/research
+    // and picked real results to hand over. Deliberately blunt about the
+    // alternative: Gemini has no web access here, so any other URL it writes
+    // is typed from memory and will be stripped before the user ever sees it
+    // (see stripFabricatedLinks below) — telling it that plainly beats a
+    // generic "don't make things up" that's easy to ignore mid-draft.
+    const sourcesBlock = allowedSources.length > 0
+      ? `\nVERIFIED SOURCES (from a real web search — you may link to these and ONLY these):
+${allowedSources.map((u) => `- ${u}`).join('\n')}
+`
+      : ''
+    const linkGuardrail = allowedSources.length > 0
+      ? 'NEVER write a URL that is not in VERIFIED SOURCES above. Any other link in your output will be deleted before anyone sees it.'
+      : 'You have no web access and no verified sources for this piece. NEVER write a URL — any link you invent will be deleted before anyone sees it. If you want to cite a source, describe the claim without a link instead.'
+
     const goodSamples = readGoodSamples(dna.examples)
     const goodBlock = goodSamples.length
       ? `GOOD EXAMPLE${goodSamples.length > 1 ? 'S' : ''} (study the patterns across ${goodSamples.length > 1 ? 'them' : 'it'}, not the words — never lift specific references):
@@ -353,11 +430,12 @@ ${observedBlock}
 ${goodBlock}
 
 ${dna.examples.bad ? `AVOID THIS STYLE:\n${dna.examples.bad}` : ''}
-${ragBlock}
+${ragBlock}${sourcesBlock}
 AVOID RULES (hard stops):
 ${dna.avoid.join('\n')}
 
 ${contextSections ? contextSections + '\n\n' : ''}${UNIVERSAL_GUARDRAILS}
+${linkGuardrail}
 
 FORMAT: ${FORMAT_INSTRUCTIONS[format as ContentFormat]}
 
@@ -478,6 +556,21 @@ Output only the final content — no preamble, no labels, just the content itsel
               }
             } catch (err) {
               console.error('Voice check failed (non-fatal):', err)
+            }
+          }
+
+          // Final defense against invented links: strip anything that isn't a
+          // verified source, regardless of what the prompt guardrail and the
+          // critic/revise pass above already caught. Runs last so a link the
+          // revise pass introduced is caught too.
+          if (finalBody) {
+            const { text: safeBody, removedCount } = stripFabricatedLinks(finalBody, allowedSources)
+            if (removedCount > 0) {
+              finalBody = safeBody
+              revised = true
+              linterFlags.push(
+                `Removed ${removedCount} link${removedCount > 1 ? 's' : ''} that could not be verified`
+              )
             }
           }
 
