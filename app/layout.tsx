@@ -1,14 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import "./site.css";
 
-// Root layout for the one-page proof-capture site. The previous product's
-// layout (Geist fonts + Tailwind globals) is parked in legacy/voice-product-app.
+// Root layout for the one-page site. The previous product's layout (Geist
+// fonts + Tailwind globals) is parked in legacy/voice-product-app.
 
-// Title/description copied exactly from the design file's <head>.
 export const metadata: Metadata = {
-  title: "Vowwl — Catch the proof before it disappears",
+  title: "Vowwl — You already said the valuable thing",
   description:
-    "Vowwl captures the proof your projects already generate, before it disappears, and turns it into finished success stories. Without adding work to your delivery team.",
+    "Vowwl is an archivist for a senior consultant's track record. One conversation a month surfaces the cases and patterns you've gone blind to, shaped into a few sharp pieces. Nothing publishes without your yes.",
 };
 
 // Mirrors the design's viewport meta. viewport-fit=cover lets the sticky
