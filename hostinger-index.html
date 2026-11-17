@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vowwl — You already said the valuable thing</title>
+<meta name="description" content="Vowwl is an archivist for a senior consultant's track record. One conversation a month surfaces the cases and patterns you've gone blind to, shaped into a few sharp pieces. Nothing publishes without your yes.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:     #0F1629;   /* primary ink + dark sections            */
+  --ink:      #1A2340;   /* slightly lifted navy for panels        */
+  --page:     #FBFAF7;   /* warm off-white page background          */
+  --amber:    #E8A020;   /* single brand accent                     */
+  --amber-dk: #B87D18;   /* amber for small text on light (contrast)*/
+  --off:      #F5F3EF;   /* off-white text on dark                  */
+  --body:     #4A4638;   /* warm dark-grey body text on light       */
+  --muted:    #8A8578;   /* secondary / captions                    */
+  --line:     #E7E1D6;   /* hairline dividers on light              */
+  --line-dk:  #2A3550;   /* hairline dividers on dark               */
+  --serif: 'IBM Plex Serif', Georgia, serif;
+  --sans:  'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --maxw: 1080px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+body {
+  background: var(--page);
+  color: var(--body);
+  font-family: var(--sans);
+  font-size: 17px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+  html { scroll-behavior: auto; }
+}
+
+a { color: inherit; }
+
+.wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 32px; }
+
+.topbar {
+  position: sticky; top: 0; z-index: 20;
+  background: rgba(251,250,247,0.86);
+  backdrop-filter: saturate(1.1) blur(8px);
+  border-bottom: 1px solid var(--line);
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.topbar .wrap {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 68px;
+}
+.brand {
+  font-family: var(--serif); font-weight: 600; font-size: 24px;
+  color: var(--amber-dk); letter-spacing: 0.01em; text-decoration: none;
+}
+.nav-cta {
+  font-family: var(--sans); font-weight: 500; font-size: 15px;
+  color: var(--navy); text-decoration: none;
+  border: 1.5px solid var(--navy); border-radius: 999px;
+  padding: 9px 18px; transition: background .18s, color .18s;
+}
+.nav-cta:hover { background: var(--navy); color: var(--off); }
+
+.hero { padding: 96px 0 72px; }
+.hero-kicker {
+  font-family: var(--sans); font-weight: 500; font-size: 15px;
+  color: var(--amber-dk); margin-bottom: 22px;
+}
+.hero h1 {
+  font-family: var(--serif); font-weight: 600;
+  font-size: clamp(34px, 6vw, 58px);
+  line-height: 1.12; color: var(--navy);
+  letter-spacing: -0.01em; max-width: 19ch;
+}
+.hero-sub {
+  margin-top: 26px; font-size: clamp(17px, 2.2vw, 20px);
+  line-height: 1.6; color: var(--body); max-width: 54ch;
+}
+.hero-actions { margin-top: 38px; display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+.btn-primary {
+  font-family: var(--sans); font-weight: 500; font-size: 16px;
+  background: var(--navy); color: var(--off); text-decoration: none;
+  padding: 14px 26px; border-radius: 999px;
+  transition: transform .15s ease, background .18s;
+  display: inline-block;
+}
+.btn-primary:hover { background: #050A16; transform: translateY(-1px); }
+.btn-text {
+  font-family: var(--sans); font-weight: 500; font-size: 16px;
+  color: var(--navy); text-decoration: none;
+  border-bottom: 2px solid var(--amber); padding-bottom: 2px;
+}
+
+section { padding: 76px 0; }
+.section-title {
+  font-family: var(--serif); font-weight: 600;
+  font-size: clamp(26px, 4vw, 38px); line-height: 1.18;
+  color: var(--navy); max-width: 24ch; letter-spacing: -0.01em;
+}
+.section-intro {
+  margin-top: 18px; font-size: 18px; color: var(--body);
+  max-width: 56ch; line-height: 1.65;
+}
+
+.problem { border-top: 1px solid var(--line); }
+.problem-list { margin-top: 44px; display: grid; gap: 26px; max-width: 62ch; }
+.problem-list p { font-size: 17.5px; line-height: 1.7; color: var(--body); }
+.problem-close {
+  margin-top: 40px; font-family: var(--serif); font-style: italic;
+  font-size: 20px; line-height: 1.5; color: var(--navy); max-width: 48ch;
+}
+
+.reframe { background: var(--navy); }
+.reframe-statement {
+  font-family: var(--serif); font-weight: 600;
+  font-size: clamp(24px, 3.4vw, 32px); line-height: 1.3;
+  color: var(--off); max-width: 20ch;
+}
+.reframe-body {
+  margin-top: 20px; font-size: 18px; line-height: 1.65;
+  color: #C8CEDA; max-width: 54ch;
+}
+
+.how { border-top: 1px solid var(--line); }
+.how-title {
+  font-family: var(--serif); font-weight: 600;
+  font-size: clamp(26px, 4vw, 38px); line-height: 1.25;
+  color: var(--navy); max-width: 26ch; letter-spacing: -0.01em;
+}
+.how-sub {
+  margin-top: 18px; font-size: 18px; color: var(--body);
+  max-width: 56ch; line-height: 1.65;
+}
+.steps { margin-top: 56px; display: grid; gap: 4px; }
+.step { display: grid; grid-template-columns: 32px 1fr; gap: 20px; padding: 34px 0; border-bottom: 1px solid var(--line); align-items: start; }
+.step:first-child { border-top: 1px solid var(--line); }
+.step-num { font-family: var(--serif); font-weight: 500; font-size: 15px; color: var(--muted); padding-top: 4px; }
+.step h3 { font-family: var(--serif); font-weight: 600; font-size: 22px; color: var(--navy); margin-bottom: 8px; }
+.step p  { font-size: 16px; color: var(--body); line-height: 1.65; max-width: 60ch; }
+.how-close {
+  margin-top: 48px; padding-top: 32px; border-top: 1px solid var(--line);
+  font-family: var(--serif); font-style: italic;
+  font-size: 20px; line-height: 1.5; color: var(--navy); max-width: 50ch;
+}
+
+.offer { background: #F3F0EA; border-top: 1px solid var(--line); }
+
+.proof { border-top: 1px solid var(--line); }
+.proof-label {
+  font-family: var(--sans); font-weight: 600; font-size: 14px;
+  letter-spacing: 0.02em; color: var(--muted); margin-bottom: 14px;
+}
+.proof-body { font-size: 16.5px; line-height: 1.65; color: var(--body); max-width: 48ch; }
+
+.cta { background: var(--navy); color: var(--off); text-align: left; }
+.cta h2 { font-family: var(--serif); font-weight: 600; font-size: clamp(26px, 4vw, 40px); line-height: 1.15; color: var(--off); max-width: 20ch; }
+.cta p { margin-top: 18px; font-size: 18px; color: #C8CEDA; max-width: 52ch; }
+.cta-actions { margin-top: 34px; display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+.cta .btn-primary { background: var(--amber); color: var(--navy); font-weight: 600; }
+.cta .btn-primary:hover { background: #F2AE30; }
+.cta .btn-text { color: var(--off); border-bottom-color: var(--amber); }
+
+footer { padding: 40px 0 56px; border-top: 1px solid var(--line-dk); background: var(--navy); color: #8A93A6; }
+footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; font-size: 14px; }
+footer a { color: #C8CEDA; text-decoration: none; }
+footer a:hover { color: var(--amber); }
+
+@media (max-width: 480px) {
+  .wrap { padding: 0 22px; }
+  .hero { padding: 68px 0 56px; }
+  section { padding: 60px 0; }
+  .step { grid-template-columns: 26px 1fr; gap: 14px; }
+}
+
+@keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: no-preference) {
+  .hero-kicker { animation: rise .5s ease both; }
+  .hero h1     { animation: rise .5s ease .06s both; }
+  .hero-sub    { animation: rise .5s ease .12s both; }
+  .hero-actions{ animation: rise .5s ease .18s both; }
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap">
+    <a href="#top" class="brand">Vowwl</a>
+    <a href="https://calendly.com/sonisapna45/30min" class="nav-cta" target="_blank" rel="noopener">Book a call</a>
+  </div>
+</div>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <div class="hero-kicker">For consultants and fractional executives with real track records.</div>
+    <h1>Your network sees a fraction of what you&rsquo;ve actually done.</h1>
+    <p class="hero-sub">
+      Twenty-plus years of judgment, and most of it never left the room it happened in.
+    </p>
+    <div class="hero-actions">
+      <a href="https://calendly.com/sonisapna45/30min" class="btn-primary" target="_blank" rel="noopener">Book a 15-minute call</a>
+      <a href="#how" class="btn-text">See how it works</a>
+    </div>
+  </div>
+</header>
+
+<section class="problem" id="problem">
+  <div class="wrap">
+    <h2 class="section-title">You didn&rsquo;t go quiet because you ran out of things to say.</h2>
+    <div class="problem-list">
+      <p>You&rsquo;ve solved the same problem so many times that your sharpest instinct doesn&rsquo;t register as insight anymore. It&rsquo;s just how you think now. You don&rsquo;t mention it — not because it&rsquo;s small, but because to you, it stopped being news a decade ago.</p>
+      <p>Writing about your own wins feels like something else entirely. Not pride — just beneath you, somehow. So you stay quiet, and the market slowly resets its idea of what you&rsquo;re capable of, because nothing reminds them.</p>
+      <p>You think clearly out loud, in a room, in real time. Put the same thought in writing and it comes out flat — a slide version of something that was alive five minutes ago. So most of it never gets written down at all.</p>
+      <p>And somewhere in the last few years, you became the most senior person in every room you&rsquo;re in. Useful for your clients. Quieter for you — there&rsquo;s no one left to push back on your thinking the way you used to push back on others&rsquo;.</p>
+    </div>
+    <p class="problem-close">None of that means the experience isn&rsquo;t there. It means no one&rsquo;s caught it yet.</p>
+  </div>
+</section>
+
+<section class="reframe">
+  <div class="wrap">
+    <p class="reframe-statement">We don&rsquo;t generate your opinions. We surface them.</p>
+    <p class="reframe-body">
+      You already have the point of view — earned over twenty-plus years of actually being in the room.
+      Our job isn&rsquo;t to invent one for you. It&rsquo;s to notice the one you already have, and shape it
+      into something good enough to carry your name.
+    </p>
+  </div>
+</section>
+
+<section class="how" id="how">
+  <div class="wrap">
+    <h2 class="how-title">
+      You already said the valuable thing.<br>
+      You just said it in a meeting — not on LinkedIn.
+    </h2>
+    <p class="how-sub">
+      Your experience doesn&rsquo;t need more effort from you. It needs someone to catch it and shape it.
+      Here&rsquo;s the whole of it:
+    </p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div>
+          <h3>We talk. Once a month.</h3>
+          <p>A real conversation with someone who knows your world — not a form, not a voice note. You walk through actual situations: the deal that nearly died, the call you&rsquo;d make differently now. That&rsquo;s the entire ask on your time.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div>
+          <h3>We find what&rsquo;s worth saying.</h3>
+          <p>The part you can&rsquo;t do for yourself, because you&rsquo;re too close to it. We catch the story you&rsquo;d have dismissed as obvious, and shape it in your voice, from your own material — fewer, sharper pieces, signal over volume.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div>
+          <h3>Nothing goes out without your yes.</h3>
+          <p>You see every piece before it&rsquo;s live and kill anything that isn&rsquo;t you. Decades of reputation, kept entirely in your hands. Your name, your call, every time.</p>
+        </div>
+      </div>
+    </div>
+
+    <p class="how-close">
+      No dashboard. No content calendar. No homework. One conversation a month, and a body of work
+      that sounds like you at your sharpest.
+    </p>
+  </div>
+</section>
+
+<section class="offer" id="offer">
+  <div class="wrap">
+    <h2 class="section-title">We&rsquo;re taking on a small number of founding clients.</h2>
+    <p class="section-intro">
+      Not because of what it costs — there&rsquo;s no rate card to point you to yet. This only works with
+      real attention, and real attention doesn&rsquo;t scale past a handful of people at a time. If that
+      sounds like a fit, the next step is a conversation, not a form.
+    </p>
+  </div>
+</section>
+
+<section class="proof" id="proof">
+  <div class="wrap">
+    <div class="proof-label">What clients say</div>
+    <p class="proof-body">
+      The first founding clients are still in month one. Their names and their own words will go
+      here once there&rsquo;s something real to show — not before.
+    </p>
+  </div>
+</section>
+
+<section class="cta" id="contact">
+  <div class="wrap">
+    <h2>If this sounds like your week, let&rsquo;s talk.</h2>
+    <p>One conversation. No pitch deck, no onboarding call, no commitment beyond the fifteen minutes.</p>
+    <div class="cta-actions">
+      <a href="https://calendly.com/sonisapna45/30min" class="btn-primary" target="_blank" rel="noopener">Book a 15-minute call</a>
+      <a href="https://www.linkedin.com/in/sapana-sonee" class="btn-text" target="_blank" rel="noopener">Connect on LinkedIn</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>Vowwl — for the track record you haven&rsquo;t written down yet.</span>
+    <span>Built by <a href="https://www.linkedin.com/in/sapana-sonee" target="_blank" rel="noopener">Sapana Sonee</a></span>
+  </div>
+</footer>
+
+</body>
+</html>
